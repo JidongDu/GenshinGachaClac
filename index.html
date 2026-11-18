@@ -1,0 +1,1383 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>原神抽卡期望计算器 · 一期两角色池 + 一武器池</title>
+<style>
+  :root{
+    --bg:#070a11;
+    --panel:rgba(255,255,255,.030);
+    --line:rgba(255,255,255,.075);
+    --text:#e9eef8;
+    --muted:#8b96ab;
+    --muted2:#66718a;
+    --gold:#e9c37c;
+    --gold2:#f6e0b3;
+    --blue:#7aa2f7;
+    --pink:#f0719b;
+    --green:#57d3a3;
+    --red:#e0645f;
+    font-synthesis:none;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0}
+  body{
+    background:
+      radial-gradient(1100px 620px at 12% -12%, rgba(233,195,124,.10), transparent 62%),
+      radial-gradient(900px 560px at 96% 4%, rgba(122,162,247,.09), transparent 60%),
+      linear-gradient(180deg,#080b13 0%, #070a11 45%, #060810 100%);
+    background-attachment:fixed;
+    color:var(--text);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Hiragino Sans GB","Microsoft YaHei","Noto Sans SC",sans-serif;
+    font-size:14px;
+    line-height:1.55;
+    -webkit-font-smoothing:antialiased;
+    min-height:100vh;
+  }
+  .app{max-width:1380px;margin:0 auto;padding:30px 22px 70px}
+
+  header.top{display:flex;align-items:flex-end;justify-content:space-between;gap:20px;flex-wrap:wrap;margin-bottom:22px}
+  .brand{display:flex;align-items:center;gap:14px}
+  .logo{
+    width:44px;height:44px;border-radius:14px;flex:none;
+    background:linear-gradient(145deg,rgba(233,195,124,.95),rgba(180,130,60,.55));
+    display:grid;place-items:center;color:#1a1206;font-weight:800;font-size:20px;
+    box-shadow:0 6px 24px rgba(233,195,124,.28), inset 0 1px 0 rgba(255,255,255,.5);
+  }
+  h1{font-size:21px;margin:0;letter-spacing:.2px;font-weight:650}
+  .sub{color:var(--muted);font-size:12.5px;margin-top:3px}
+  .top-note{color:var(--muted2);font-size:12px;text-align:right;max-width:440px}
+  .top-note b{color:var(--gold);font-weight:600}
+
+  .grid{display:grid;grid-template-columns:388px minmax(0,1fr);gap:18px;align-items:start}
+  @media (max-width:1080px){ .grid{grid-template-columns:1fr} }
+
+  .card{
+    position:relative;
+    background:linear-gradient(180deg,rgba(255,255,255,.042),rgba(255,255,255,.014));
+    border:1px solid var(--line);
+    border-radius:18px;
+    padding:17px 18px 15px;
+    box-shadow:0 14px 44px rgba(0,0,0,.42), inset 0 1px 0 rgba(255,255,255,.045);
+    backdrop-filter:blur(6px);
+    margin-bottom:16px;
+  }
+  .card h2{
+    font-size:11.5px;letter-spacing:.16em;color:var(--muted);font-weight:650;
+    margin:0 0 14px;display:flex;align-items:center;gap:8px;text-transform:uppercase;
+  }
+  .card h2::before{content:"";width:5px;height:5px;border-radius:50%;background:var(--gold);box-shadow:0 0 10px var(--gold)}
+  .card h2 .tag{margin-left:auto;text-transform:none;letter-spacing:0;font-weight:500;color:var(--muted2);font-size:11px}
+
+  .field{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:7px 0}
+  .field > label{color:#c6cede;font-size:13px;flex:1;min-width:0}
+  .field .hint{display:block;color:var(--muted2);font-size:11px;margin-top:1px}
+
+  input[type=number]{
+    width:88px;background:rgba(0,0,0,.38);border:1px solid var(--line);color:var(--text);
+    border-radius:10px;padding:8px 10px;font-size:13.5px;font-variant-numeric:tabular-nums;
+    text-align:right;font-family:inherit;transition:border-color .15s, box-shadow .15s;
+  }
+  input[type=number]:focus{outline:none;border-color:rgba(233,195,124,.55);box-shadow:0 0 0 3px rgba(233,195,124,.10)}
+  input[type=range]{
+    width:100%;accent-color:var(--gold);height:22px;cursor:pointer;
+  }
+  select{
+    background:rgba(0,0,0,.38);border:1px solid var(--line);color:var(--text);border-radius:10px;
+    padding:8px 10px;font-size:13.5px;font-family:inherit;min-width:96px;cursor:pointer;
+  }
+  select:focus{outline:none;border-color:rgba(233,195,124,.55)}
+
+  .pills{display:flex;background:rgba(0,0,0,.38);border:1px solid var(--line);border-radius:12px;padding:4px;gap:4px}
+  .pills label{flex:1;position:relative;cursor:pointer}
+  .pills input{position:absolute;opacity:0;pointer-events:none}
+  .pills span{
+    display:block;text-align:center;padding:7px 6px;border-radius:9px;font-size:12.5px;
+    color:var(--muted);transition:.18s;white-space:nowrap;
+  }
+  .pills input:checked + span{
+    background:linear-gradient(180deg,rgba(233,195,124,.22),rgba(233,195,124,.12));
+    color:var(--gold2);box-shadow:inset 0 0 0 1px rgba(233,195,124,.35);
+  }
+
+  .slider-row{padding:4px 0 10px}
+  .slider-head{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:2px}
+  .slider-head .v{font-variant-numeric:tabular-nums;color:var(--gold);font-size:15px;font-weight:650}
+  .slider-head .v small{color:var(--muted2);font-weight:400;font-size:11px;margin-left:2px}
+  .slider-head .v input.mini{
+    width:66px;background:rgba(0,0,0,.38);border:1px solid var(--line);color:var(--gold);
+    border-radius:9px;padding:5px 8px;font-size:15px;font-weight:650;text-align:right;
+    font-family:inherit;font-variant-numeric:tabular-nums;transition:border-color .15s, box-shadow .15s;
+  }
+  .slider-head .v input.mini:focus{outline:none;border-color:rgba(233,195,124,.55);box-shadow:0 0 0 3px rgba(233,195,124,.10)}
+
+  details.adv{margin-top:2px}
+  details.adv summary{
+    cursor:pointer;color:var(--muted);font-size:12.5px;list-style:none;display:flex;align-items:center;gap:7px;
+    padding:9px 0 2px;user-select:none;
+  }
+  details.adv summary::-webkit-details-marker{display:none}
+  details.adv summary::before{content:"▸";font-size:11px;color:var(--gold);transition:transform .2s;display:inline-block}
+  details.adv[open] summary::before{transform:rotate(90deg)}
+  details.adv .inner{padding-top:10px;border-top:1px dashed rgba(255,255,255,.07);margin-top:8px}
+  .adv-grid{display:grid;grid-template-columns:1fr 1fr;gap:0 14px}
+  .adv-grid .field{padding:5px 0}
+  .adv-grid input[type=number]{width:74px;padding:6px 8px;font-size:12.5px}
+  .adv-sec{grid-column:1/-1;color:var(--muted2);font-size:11px;letter-spacing:.1em;margin:10px 0 2px;text-transform:uppercase}
+  .chk{display:flex;gap:8px;color:var(--muted2);font-size:11.5px;padding:6px 0 0}
+  .chk input{accent-color:var(--gold);margin-top:2px}
+
+  .btn{
+    appearance:none;border:1px solid rgba(233,195,124,.35);border-radius:11px;cursor:pointer;
+    background:linear-gradient(180deg,rgba(233,195,124,.20),rgba(233,195,124,.08));
+    color:var(--gold2);font-family:inherit;font-size:13px;padding:9px 14px;font-weight:600;
+    transition:.18s;width:100%;
+  }
+  .btn:hover{background:linear-gradient(180deg,rgba(233,195,124,.30),rgba(233,195,124,.13));border-color:rgba(233,195,124,.55)}
+  .btn:active{transform:translateY(1px)}
+  .btn.ghost{background:rgba(255,255,255,.03);border-color:var(--line);color:#c6cede;font-weight:500}
+  .btn.ghost:hover{background:rgba(255,255,255,.06)}
+  .btn-row{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}
+
+  .hero{display:flex;gap:26px;align-items:center;flex-wrap:wrap;padding:20px 22px}
+  .hero .main{flex:1;min-width:260px}
+  .pmain{
+    font-size:62px;line-height:1;font-weight:750;letter-spacing:-.028em;font-variant-numeric:tabular-nums;
+    background:linear-gradient(180deg,#ffffff 8%, var(--gold) 62%, #b98f45 100%);
+    -webkit-background-clip:text;background-clip:text;color:transparent;
+    filter:drop-shadow(0 4px 22px rgba(233,195,124,.20));
+  }
+  .pmain small{font-size:26px;font-weight:600;letter-spacing:0}
+  .pdesc{color:var(--muted);font-size:12.5px;margin-top:10px;max-width:520px}
+  .pdesc b{color:#dfe6f4;font-weight:600}
+  .metrics{display:grid;grid-template-columns:repeat(2,minmax(120px,1fr));gap:10px;min-width:280px}
+  .metric{background:rgba(0,0,0,.26);border:1px solid var(--line);border-radius:13px;padding:10px 12px}
+  .metric .k{color:var(--muted2);font-size:11px;letter-spacing:.04em}
+  .metric .v{font-size:19px;font-weight:650;font-variant-numeric:tabular-nums;margin-top:2px}
+  .metric .v span{font-size:11.5px;color:var(--muted);font-weight:400;margin-left:2px}
+
+  .stack{display:flex;height:30px;border-radius:10px;overflow:hidden;background:rgba(255,255,255,.05);border:1px solid var(--line)}
+  .stack > div{height:100%;transition:width .45s cubic-bezier(.22,.8,.3,1);min-width:0}
+  .seg-a{background:linear-gradient(180deg,#f0d19a,#c99a44)}
+  .seg-b{background:linear-gradient(180deg,#5b7fd4,#3f5d9e)}
+  .seg-c{background:rgba(255,255,255,.075)}
+  .legend{display:flex;gap:16px;flex-wrap:wrap;margin-top:10px;font-size:12px;color:var(--muted)}
+  .legend i{display:inline-block;width:9px;height:9px;border-radius:3px;margin-right:6px;vertical-align:middle}
+  .legend b{color:#dfe6f4;font-variant-numeric:tabular-nums;font-weight:600}
+
+  .chartwrap{position:relative;height:272px;margin-top:2px}
+  canvas#chart{width:100%;height:100%;display:block}
+  .tip{
+    position:absolute;pointer-events:none;background:rgba(10,14,22,.94);border:1px solid rgba(255,255,255,.13);
+    border-radius:10px;padding:7px 10px;font-size:12px;line-height:1.5;white-space:nowrap;
+    box-shadow:0 10px 30px rgba(0,0,0,.5);opacity:0;transition:opacity .1s;transform:translate(-50%,-118%);z-index:5;
+  }
+  .tip.on{opacity:1}
+  .tip .t1{color:var(--muted);font-size:11px}
+  .tip .t2{color:var(--gold);font-weight:650;font-variant-numeric:tabular-nums}
+
+  .chips{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}
+  .chip{
+    background:rgba(255,255,255,.032);border:1px solid var(--line);border-radius:11px;
+    padding:7px 11px;font-size:12px;color:var(--muted);display:flex;gap:7px;align-items:baseline;
+  }
+  .chip b{color:#dfe6f4;font-variant-numeric:tabular-nums;font-size:13.5px;font-weight:650}
+
+  table.matrix{width:100%;border-collapse:separate;border-spacing:3px;font-variant-numeric:tabular-nums}
+  table.matrix th{font-weight:500;color:var(--muted2);font-size:11.5px;padding:3px 2px}
+  table.matrix th.rowh{text-align:right;padding-right:6px;white-space:nowrap}
+  table.matrix td{
+    text-align:center;padding:7px 4px;border-radius:9px;background:rgba(255,255,255,.028);
+    font-size:12.5px;color:#cdd6e6;border:1px solid transparent;
+  }
+  table.matrix td.hl{background:rgba(233,195,124,.16);color:var(--gold2);border-color:rgba(233,195,124,.4);font-weight:650}
+
+  .replay{margin-top:2px}
+  .rl{display:flex;flex-direction:column;gap:5px;max-height:338px;overflow:auto;margin-top:10px;padding:1px 4px 8px 0}
+  .rev{display:flex;align-items:center;gap:10px;font-size:12.5px;padding:6px 10px;border-radius:9px;background:rgba(255,255,255,.026);border:1px solid rgba(255,255,255,.05)}
+  .rev .n{color:var(--muted2);font-variant-numeric:tabular-nums;min-width:76px;font-size:11.5px}
+  .rev .b{font-size:11px;padding:1px 7px;border-radius:6px;background:rgba(122,162,247,.14);color:var(--blue)}
+  .rev .b.w{background:rgba(240,113,155,.14);color:var(--pink)}
+  .rev .k{flex:1;color:#ccd5e5}
+  .rev.ok{border-color:rgba(87,211,163,.22)}
+  .rev.bad{border-color:rgba(224,100,95,.20)}
+  .rev .p{color:var(--muted2);font-size:11.5px;font-variant-numeric:tabular-nums}
+  .empty{color:var(--muted2);font-size:12.5px;text-align:center;padding:18px 0}
+  .summary{color:var(--muted);font-size:12.5px;margin-top:11px;padding-top:11px;border-top:1px dashed rgba(255,255,255,.07)}
+  .summary b{color:#dfe6f4}
+
+  .note{color:var(--muted2);font-size:11.5px;line-height:1.75;margin-top:10px}
+  .note code{background:rgba(255,255,255,.06);padding:1px 5px;border-radius:5px;font-size:11px;color:#c9d3e6}
+  .check{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+  .check span{background:rgba(255,255,255,.03);border:1px solid var(--line);border-radius:9px;padding:5px 9px;font-size:11.5px;color:var(--muted);font-variant-numeric:tabular-nums}
+  .check span b{color:var(--gold);font-weight:600}
+
+
+  /* ---- 星辉返利面板 ---- */
+  .txt{background:rgba(0,0,0,.38);border:1px solid var(--line);color:var(--text);border-radius:9px;
+       padding:6px 8px;font-size:12.5px;font-family:inherit;width:100%;min-width:0}
+  .txt:focus{outline:none;border-color:rgba(233,195,124,.55)}
+  .tri{display:grid;grid-template-columns:1fr 1fr 1fr;gap:5px;flex:2.1}
+  .tri2{display:grid;grid-template-columns:1fr 1fr;gap:5px;flex:2.1}
+  .seg-tabs{display:flex;gap:6px;margin-bottom:10px}
+  .seg-tabs button{flex:1;background:rgba(0,0,0,.35);border:1px solid var(--line);color:var(--muted);
+       border-radius:9px;padding:6px;font-size:12.5px;cursor:pointer;font-family:inherit;transition:.15s}
+  .seg-tabs button.on{color:var(--gold2);border-color:rgba(233,195,124,.45);
+       background:linear-gradient(180deg,rgba(233,195,124,.18),rgba(233,195,124,.08))}
+  .roster-grid{display:grid;grid-template-columns:1fr 1fr;gap:3px 10px;max-height:290px;overflow:auto;
+       margin-top:8px;padding-right:4px}
+  .roster-item{display:flex;align-items:center;gap:6px;font-size:12px;color:#c6cede;height:24px}
+  .roster-item span{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .roster-item input{width:42px;padding:2px 4px;font-size:12px;text-align:right;background:rgba(0,0,0,.35);
+       border:1px solid var(--line);border-radius:7px;color:var(--text);font-family:inherit;
+       font-variant-numeric:tabular-nums}
+  .roster-item input:focus{outline:none;border-color:rgba(233,195,124,.55)}
+  .roster-item.r5 span{color:#e9c37c}
+  .roster-item.r4 span{color:#b08cff}
+  .roster-item.r3 span{color:#8b96ab}
+  .roster-item.c6 span{font-weight:650}
+  .roster-item.off span{opacity:.42}
+  .roster-item.off input{opacity:.55}
+  .roster-item.wep input.chk{appearance:none;-webkit-appearance:none;width:15px;height:15px;
+      border:1px solid var(--line);border-radius:4px;background:rgba(0,0,0,.35);cursor:pointer;
+      position:relative;flex:none;margin:0}
+  .roster-item.wep input.chk:checked{background:linear-gradient(180deg,#e9c37c,#c99a44);
+      border-color:rgba(233,195,124,.55)}
+  .roster-item.wep input.chk:checked::after{content:"✓";position:absolute;inset:0;display:flex;
+      align-items:center;justify-content:center;font-size:10px;color:#1a1206;font-weight:700}
+  .roster-search{width:100%;margin-top:8px}
+  .rs-title{margin-top:16px;padding-top:12px;border-top:1px dashed rgba(255,255,255,.08);
+      font-size:11.5px;letter-spacing:.1em;color:var(--gold);font-weight:600}
+  .rs-title .rs-sub{color:var(--muted2);letter-spacing:0;font-weight:400;margin-left:8px;font-size:11px}
+  .roster-item.wep input{width:38px}
+  .sl-row{display:flex;align-items:center;gap:18px;flex-wrap:wrap;margin-bottom:4px}
+  .sl-item .k{font-size:11px;color:var(--muted2);letter-spacing:.03em}
+  .sl-item .v{font-size:27px;font-weight:650;font-variant-numeric:tabular-nums;line-height:1.25}
+  .sl-item .v small{font-size:12px;color:var(--muted);font-weight:400;margin-left:2px}
+  .sl-item.hi .v{color:var(--gold)}
+  .sl-arrow{color:var(--muted2);font-size:18px;margin:0 2px}
+  select.sel{width:100%;background:rgba(0,0,0,.42);border:1px solid var(--line);color:var(--text);
+      border-radius:9px;padding:7px 8px;font-size:12.5px;font-family:inherit;cursor:pointer;
+      appearance:none;-webkit-appearance:none;background-image:linear-gradient(45deg,transparent 50%,#8b96ab 50%),linear-gradient(135deg,#8b96ab 50%,transparent 50%);
+      background-position:calc(100% - 14px) 52%,calc(100% - 9px) 52%;background-size:5px 5px,5px 5px;background-repeat:no-repeat}
+  select.sel:focus{outline:none;border-color:rgba(233,195,124,.55)}
+  select.sel, select.sel option{color-scheme:dark}
+  select.sel option{background-color:#141a26;color:#dfe6f4}
+  .tri select.sel{padding:6px 6px;font-size:12px;background-position:calc(100% - 11px) 52%,calc(100% - 7px) 52%}
+  .field.col{display:block;padding:8px 0}
+  .field.col > label{display:block;margin-bottom:5px;flex:none}
+  .sl-book{display:flex;gap:14px;flex-wrap:wrap;font-size:11.5px;color:var(--muted2);margin-top:10px}
+  .sl-book b{color:#cdd6e6;font-variant-numeric:tabular-nums;font-weight:600}
+
+  /* ---- 帮助 ---- */
+  .top-right{display:flex;align-items:center;gap:16px}
+  .helpbtn{width:34px;height:34px;border-radius:50%;border:1px solid rgba(233,195,124,.4);
+      background:rgba(233,195,124,.10);color:var(--gold);font-size:16px;font-weight:700;
+      cursor:pointer;font-family:inherit;transition:.18s;flex:none}
+  .helpbtn:hover{background:rgba(233,195,124,.22);border-color:rgba(233,195,124,.7)}
+  .modal{position:fixed;inset:0;background:rgba(4,6,11,.72);backdrop-filter:blur(4px);
+      display:none;align-items:center;justify-content:center;z-index:50;padding:24px}
+  .modal.on{display:flex}
+  .modal-card{width:min(820px,94vw);max-height:86vh;display:flex;flex-direction:column;
+      background:linear-gradient(180deg,#141a26,#0f141d);border:1px solid var(--line);
+      border-radius:18px;box-shadow:0 24px 70px rgba(0,0,0,.6);overflow:hidden}
+  .modal-head{display:flex;align-items:center;justify-content:space-between;gap:12px;
+      padding:16px 20px;border-bottom:1px solid var(--line)}
+  .modal-head h3{margin:0;font-size:15px;letter-spacing:.04em}
+  .modal-head .x{background:none;border:0;color:var(--muted);font-size:22px;line-height:1;
+      cursor:pointer;padding:2px 6px;border-radius:8px}
+  .modal-head .x:hover{background:rgba(255,255,255,.06);color:var(--text)}
+  .modal-body{padding:16px 20px 22px;overflow:auto;font-size:13px;line-height:1.85;color:#c6cede}
+  .modal-body h4{margin:16px 0 6px;font-size:12.5px;color:var(--gold);letter-spacing:.08em}
+  .modal-body h4:first-child{margin-top:0}
+  .modal-body ul{margin:6px 0 0;padding-left:20px}
+  .modal-body li{margin:3px 0}
+  .modal-body code{background:rgba(255,255,255,.07);padding:1px 6px;border-radius:5px;
+      font-size:12px;color:#dbe4f5}
+  .modal-body b{color:#eef2fa}
+  .modal-body table{border-collapse:collapse;margin-top:6px;font-size:12.5px}
+  .modal-body td{padding:3px 12px 3px 0;color:#b9c3d6}
+  .modal-body td:first-child{color:var(--muted)}
+  .modal-foot{padding:12px 20px 16px;border-top:1px solid var(--line);display:flex;justify-content:flex-end}
+  .modal-foot .btn{width:auto;padding:9px 22px}
+
+  /* ---- 目标行（头像 + 名字） ---- */
+  .tg-list{margin-top:12px}
+  .trow{display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px dashed rgba(255,255,255,.06)}
+  .trow:last-child{border-bottom:0}
+  .tlabel{font-size:12px;color:var(--muted2);width:40px;flex:none}
+  .tav{width:26px;height:26px;border-radius:7px;object-fit:cover;flex:none;
+    background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.07)}
+  .tname{flex:1;font-size:12.5px;color:#c9d3e4;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .tnum{width:46px;background:rgba(0,0,0,.35);border:1px solid var(--line);color:var(--gold);
+    border-radius:8px;padding:4px 6px;text-align:right;font-family:inherit;font-size:13px;
+    font-variant-numeric:tabular-nums;flex:none}
+  .tnum:focus{outline:none;border-color:rgba(233,195,124,.55)}
+
+  /* ---- 可搜索下拉 ---- */
+  .dd{position:relative}
+  .dd-btn{width:100%;display:flex;align-items:center;gap:7px;background:rgba(0,0,0,.42);
+    border:1px solid var(--line);border-radius:9px;padding:5px 7px;cursor:pointer;
+    font-family:inherit;font-size:12.5px;color:var(--text);text-align:left;transition:.15s}
+  .dd-btn:hover{border-color:rgba(233,195,124,.45)}
+  .dd-av{width:20px;height:20px;border-radius:5px;object-fit:cover;flex:none;background:rgba(255,255,255,.05)}
+  .dd-name{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+  .dd-caret{border-left:4px solid transparent;border-right:4px solid transparent;
+    border-top:5px solid var(--muted);flex:none;margin-left:2px}
+  .dd-pop{position:absolute;top:calc(100% + 4px);left:0;min-width:206px;max-width:252px;z-index:80;display:none;
+    background:#121821;border:1px solid rgba(255,255,255,.12);border-radius:11px;
+    box-shadow:0 18px 44px rgba(0,0,0,.65);padding:6px}
+  .dd.open .dd-pop{display:block}
+  .dd.open{z-index:80}
+  .card.dd-open{z-index:90}
+  .dd.up .dd-pop{top:auto;bottom:calc(100% + 4px)}
+  .dd.right .dd-pop{left:auto;right:0}
+  .dd-search{width:100%;background:rgba(0,0,0,.42);border:1px solid var(--line);border-radius:8px;
+    color:var(--text);padding:5px 8px;font-size:12px;font-family:inherit;margin-bottom:5px}
+  .dd-search:focus{outline:none;border-color:rgba(233,195,124,.5)}
+  .dd-list{max-height:236px;overflow:auto}
+  .dd-item{display:flex;align-items:center;gap:7px;padding:4px 6px;border-radius:7px;
+    cursor:pointer;font-size:12.5px;color:#c9d3e4}
+  .dd-item span{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .dd-item:hover{background:rgba(255,255,255,.07)}
+  .dd-item.on{background:rgba(233,195,124,.14)}
+  .dd-item img{width:20px;height:20px;border-radius:5px;object-fit:cover;flex:none;
+    background:rgba(255,255,255,.05)}
+  .dd-item.r5 span{color:#e9c37c}
+  .dd-item.r4 span{color:#b08cff}
+  .dd-item.custom{justify-content:center;color:var(--gold);margin-top:3px;
+    border-top:1px dashed rgba(255,255,255,.08);padding-top:6px}
+
+  /* ===== 对比式布局 ===== */
+  .cmpK{font-size:10.5px;color:var(--muted2);letter-spacing:.08em;line-height:14px;
+    height:14px;margin-bottom:7px;white-space:nowrap}
+  .cmp{display:flex;align-items:flex-start;gap:16px;flex-wrap:wrap}
+  .cmpV{font-size:44px;font-weight:750;line-height:1;letter-spacing:-.02em;
+    font-variant-numeric:tabular-nums;color:#c9d3e4}
+  .cmpItem.hi .cmpV{font-size:50px;color:var(--gold);text-shadow:0 4px 26px rgba(233,195,124,.28)}
+  .cmpV small{font-size:22px;font-weight:600;margin-left:2px}
+  .cmpItem.hi .cmpV small{font-size:25px}
+  .cmpArrow{margin-top:21px;height:50px;width:22px;display:flex;align-items:center;
+    justify-content:center;color:var(--muted2);font-size:19px;line-height:1}
+  .cmpDelta{margin-left:auto;text-align:right}
+  .cmpV2{font-size:18px;font-weight:700;color:var(--green);font-variant-numeric:tabular-nums}
+  .col-head{display:flex;align-items:center;gap:9px;margin:0 0 10px 2px;
+    font-size:11px;letter-spacing:.18em;color:var(--muted)}
+  .col-head b{display:grid;place-items:center;width:20px;height:20px;border-radius:6px;
+    background:rgba(233,195,124,.16);color:var(--gold);font-size:11px;letter-spacing:0}
+  .col-head::after{content:"";flex:1;height:1px;background:linear-gradient(90deg,var(--line),transparent)}
+  .chartLegend{display:flex;gap:16px;font-size:11.5px;color:var(--muted);margin-top:10px;flex-wrap:wrap}
+  .chartLegend i{display:inline-block;width:16px;height:3px;border-radius:2px;margin-right:6px;vertical-align:middle}
+  .av{width:22px;height:22px;border-radius:6px;object-fit:cover;flex:none;
+    background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.07)}
+  .roster-item .av{margin-right:1px}
+  .autosig{display:flex;align-items:center;gap:7px;margin-top:12px;font-size:12.5px;
+    color:var(--muted);cursor:pointer;user-select:none}
+  .autosig input{width:15px;height:15px;accent-color:#c99a44;cursor:pointer}
+  .autosig:hover{color:#c6cede}
+  .picons{display:flex;gap:6px;flex-wrap:wrap;margin-top:9px}
+  .pchip{display:flex;flex-direction:column;align-items:center;gap:3px;width:42px}
+  .pchip img{width:37px;height:37px;border-radius:11px;object-fit:cover;
+    border:1px solid var(--line);background:rgba(255,255,255,.04)}
+  .pchip.s5 img{border-color:rgba(233,195,124,.55);box-shadow:0 0 12px rgba(233,195,124,.20)}
+  .pchip span{font-size:9px;color:var(--muted2);max-width:42px;white-space:nowrap;
+    overflow:hidden;text-overflow:ellipsis;text-align:center;display:block}
+  footer{color:var(--muted2);font-size:11.5px;text-align:center;margin-top:26px;line-height:1.9}
+  footer a{color:var(--muted)}
+
+  .target-grid{display:grid;grid-template-columns:1fr 1fr;gap:7px 9px;margin-top:10px}
+  .tg{display:flex;align-items:center;gap:7px;background:rgba(0,0,0,.26);border:1px solid var(--line);
+      border-radius:10px;padding:5px 8px}
+  .tg span{font-size:12px;color:var(--muted);flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .tg input{width:42px;background:rgba(0,0,0,.35);border:1px solid var(--line);color:var(--gold);
+      border-radius:7px;padding:3px 5px;text-align:right;font-family:inherit;font-size:13px;
+      font-variant-numeric:tabular-nums}
+  .tg input:focus{outline:none;border-color:rgba(233,195,124,.55)}
+  .pool-block{margin-top:13px;padding-top:11px;border-top:1px dashed rgba(255,255,255,.07)}
+  .pool-block:first-of-type{margin-top:4px;padding-top:0;border-top:0}
+  .pool-sub{font-size:10.5px;color:var(--muted2);letter-spacing:.06em;margin:8px 0 5px}
+  .grid5{display:grid;grid-template-columns:repeat(3,1fr);gap:5px}
+  .grid5 select.sel{padding:5px 4px;font-size:11.5px;background-position:calc(100% - 9px) 52%,calc(100% - 5px) 52%}
+  .pool-title{font-size:11px;color:var(--gold);letter-spacing:.1em;margin-bottom:6px;font-weight:600}
+
+  /* ===== 字号整体放大 ===== */
+  body{font-size:15.5px}
+  .sub{font-size:13.5px}
+  .top-note{font-size:12.5px}
+  .card h2{font-size:12.5px}
+  .field > label{font-size:14px}
+  .field .hint{font-size:12px}
+  input[type=number], select{font-size:14.5px}
+  .btn{font-size:14px}
+  .note{font-size:12.5px}
+  .check span{font-size:12.5px}
+  .metric .k{font-size:12px}
+  .metric .v{font-size:20px}
+  .chip{font-size:13px}
+  .chip b{font-size:14.5px}
+  .legend{font-size:12.5px}
+  .sl-book{font-size:12.5px}
+  .col-head{font-size:12px}
+  .pool-title{font-size:12px}
+  .pool-sub{font-size:11.5px}
+  .cmpK{font-size:11.5px;height:15px;line-height:15px;margin-bottom:8px}
+  .cmpV{font-size:46px}
+  .cmpItem.hi .cmpV{font-size:52px}
+  .cmpV small{font-size:23px}
+  .cmpItem.hi .cmpV small{font-size:26px}
+  .cmpV2{font-size:19px}
+  .cmpArrow{margin-top:23px;height:52px;font-size:20px}
+  .tlabel{font-size:13px;width:44px}
+  .tname{font-size:13.5px}
+  .tnum{font-size:14px;width:50px}
+  .dd-btn{font-size:13.5px;padding:6px 8px}
+  .dd-item{font-size:13.5px}
+  .dd-search{font-size:13px}
+  .roster-item{font-size:13px;height:27px}
+  .roster-item input{font-size:13px}
+  .roster-note .note{font-size:12.5px}
+  .pchip{width:46px}
+  .pchip img{width:41px;height:41px}
+  .pchip span{font-size:10px;max-width:46px}
+  .modal-body{font-size:14.5px}
+  .modal-head h3{font-size:16.5px}
+  .modal-body h4{font-size:13.5px}
+  .modal-body table{font-size:13.5px}
+  footer{font-size:12.5px}
+  .slider-head .v input.mini{width:74px;font-size:16px}
+  .slider-head .v small{font-size:12px}
+  .slider-head label{font-size:14px !important}
+  .adv summary{font-size:13px}
+  .chips .chip{font-size:13px}
+</style>
+</head>
+<body>
+
+
+<div class="modal" id="helpModal">
+  <div class="modal-card">
+    <div class="modal-head">
+      <h3>使用说明</h3>
+      <button class="x" id="btnHelpClose" aria-label="关闭">×</button>
+    </div>
+    <div class="modal-body">
+      <h4>这个工具算什么</h4>
+      给定「投入多少抽」和「要拿到哪些角色 / 武器各几个」，算出<b>全部达成</b>的概率、期望抽数与分位数，并把星辉返利带来的额外抽数放在一起对比。
+
+      <h4>顶部对比条怎么读</h4>
+      <ul>
+        <li><b>不含星辉返利</b>：只有预算时能达成的概率，精确 DP 计算，没有采样误差</li>
+        <li><b>含星辉返利</b>：把抽卡返还的星辉换成抽数后，实际达成的概率（蒙特卡洛模拟）</li>
+        <li>右侧<b>返利多出</b>：两者差几个百分点、平均多几抽</li>
+      </ul>
+
+      <h4>左侧 ① 输入</h4>
+      <ul>
+        <li><b>本期卡池</b>：角色池① / 角色池② 各选 1 个 UP 五星 + 3 个 UP 四星；武器池选 2 把 5★ 和 5 把 4★。点开下拉可<b>搜索名字</b>，候选带头像；选「＋ 自定义…」可输入任意新角色 / 新武器。</li>
+        <li><b>目标与预算</b>：总投入抽数（最大 2500）+ 四个目标各要几个。每行会显示对应 UP 的头像和名字，填 0 表示不要。</li>
+        <li><b>初始状态</b>：角色池已垫抽数 / 首金小保底还是大保底 / 连歪次数；武器池已垫抽数 / 命定值。</li>
+        <li><b>个人仓库</b>：角色命座（0–6，-1 = 未拥有）与武器是否拥有。星辉返利完全依赖这份数据，改完可点「导出」保存。</li>
+      </ul>
+
+      <h4>右侧 ② 结果</h4>
+      <ul>
+        <li><b>达成概率曲线</b>：金色实线 = 不含返利，蓝色虚线 = 含返利，竖虚线是你的预算</li>
+        <li><b>结果分解</b>：全部达成 / 角色齐但武器不足 / 角色未齐</li>
+        <li><b>星辉来源</b>：四种稀有度各贡献多少抽</li>
+        <li><b>校验</b>：用蒙特卡洛独立复核精确值，两者应在 1σ 内</li>
+      </ul>
+
+      <h4>卡池与保底规则</h4>
+      <ul>
+        <li>一期 = 角色池① + 角色池②（<b>共享</b>垫抽、大保底、捕获明光）+ 武器池（两把 UP 共池，定轨先①后②）</li>
+        <li>武器换定轨会清零命定值；UP 角色本身是常驻角色时，歪出来的常驻有 1/8 概率也算命中</li>
+        <li>策略「先角色后武器」：角色拿齐再抽武器、剩余抽数全部投入，在给定卡池下是最优的</li>
+      </ul>
+
+      <h4>星辉返还</h4>
+      <table>
+        <tr><td>5★ 角色</td><td>首次 0 / 重复 10 / 满命 25</td></tr>
+        <tr><td>4★ 角色</td><td>首次 0 / 重复 2 / 满命 5</td></tr>
+        <tr><td>5★ 武器</td><td>首次 0 / 之后 10</td></tr>
+        <tr><td>4★ 武器</td><td>首次 0 / 之后 2</td></tr>
+        <tr><td>兑换</td><td>5 星辉 = 1 抽，不限购</td></tr>
+      </table>
+      只统计本期抽卡产生的返还；达标即停手，所以「实际消耗」通常小于预算。
+
+      <h4>概率口径</h4>
+      <ul>
+        <li>角色池：0.6% / 74 抽起每抽 +6% / 90 硬保底 / 小保底 50% / 捕获明光 5% / 连歪 3 次必中</li>
+        <li>武器池：0.7% / 63 抽起每抽 +7% / 80 硬保底 / 75% 出 UP / 命定值上限 1</li>
+        <li>四星：50% 出 UP 四星，其余按常驻池（角色 42% / 武器 58%，按历史数据校准）</li>
+      </ul>
+
+      <h4>保存与更新</h4>
+      <ul>
+        <li>仓库改完点「导出 roster.js / roster.json」，覆盖 <code>data/</code> 下同名文件，刷新即生效</li>
+        <li>游戏出了新角色 / 武器：<code>python3 sync_wiki_data.py</code></li>
+        <li>补全头像图标：<code>python3 build_assets.py</code></li>
+      </ul>
+
+      <h4>命令行</h4>
+      <code>python starlight.py --pulls 360 --targets 1,1,1,0</code><br>
+      <code>python starlight.py --pulls 360 --targets 1,1,1,1 --w1 焚曜千阳 --w2 静水流涌之辉</code>
+      <p style="margin-top:6px;color:var(--muted2)">--targets 顺序：角色①,角色②,武器①,武器②</p>
+    </div>
+    <div class="modal-foot">
+      <button class="btn" id="btnHelpOk">知道了，开始使用</button>
+    </div>
+  </div>
+</div>
+
+
+<div class="app">
+  <header class="top">
+    <div class="brand">
+      <div class="logo">✦</div>
+      <div>
+        <h1>原神抽卡期望计算器</h1>
+        <div class="sub">一期两角色池 + 一武器池 · 精确 DP · 星辉返利按个人仓库</div>
+      </div>
+    </div>
+    <div class="top-right">
+    <button class="helpbtn" id="btnHelp" title="使用说明">?</button>
+    <div class="top-note">目标 = <b>角色① × a</b> + <b>角色② × b</b> + <b>武器① × p</b> + <b>武器② × q</b>；角色两池共享垫抽与大保底，武器池两把 UP 共享定轨。</div>
+  </header>
+
+  <div class="grid">
+    <aside>
+      <div class="col-head"><b>1</b>输入</div>
+      <section class="card">
+        <h2>本期卡池<span class="tag">可搜索 · 支持自定义</span></h2>
+        <div class="pool-block" id="poolA"></div>
+        <div class="pool-block" id="poolB"></div>
+        <div class="pool-block" id="poolW"></div>
+        <label class="autosig"><input type="checkbox" id="autoSig" checked><span>选完角色自动填入专武</span></label>
+        <div class="note">点开下拉可搜索名字；选「＋ 自定义…」输入任意新名字（首次 0 星辉）。</div>
+      </section>
+
+      <section class="card">
+        <h2>目标与预算</h2>
+        <div class="slider-row">
+          <div class="slider-head">
+            <label for="pullsN" style="color:#c6cede;font-size:13px">总投入抽数</label>
+            <div class="v"><input type="number" class="mini" id="pullsN" value="360" min="1" max="2500" step="1"><small>抽</small></div>
+          </div>
+          <input type="range" id="pulls" min="1" max="2500" step="1" value="360">
+        </div>
+        <div class="tg-list">
+          <div class="trow"><span class="tlabel">角色①</span><img class="tav" id="tavA" alt=""><span class="tname" id="tnmA">—</span><input type="number" class="tnum" id="tA" value="1" min="0" max="6" step="1"></div>
+          <div class="trow"><span class="tlabel">角色②</span><img class="tav" id="tavB" alt=""><span class="tname" id="tnmB">—</span><input type="number" class="tnum" id="tB" value="1" min="0" max="6" step="1"></div>
+          <div class="trow"><span class="tlabel">武器①</span><img class="tav" id="tavP" alt=""><span class="tname" id="tnmP">—</span><input type="number" class="tnum" id="tP" value="1" min="0" max="5" step="1"></div>
+          <div class="trow"><span class="tlabel">武器②</span><img class="tav" id="tavQ" alt=""><span class="tname" id="tnmQ">—</span><input type="number" class="tnum" id="tQ" value="0" min="0" max="5" step="1"></div>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2>角色池初始状态</h2>
+        <div class="field" style="padding-bottom:2px">
+          <label>首金状态<span class="hint">两池共享</span></label>
+        </div>
+        <div class="pills" style="margin-bottom:10px">
+          <label><input type="radio" name="firstGold" value="small" checked><span>小保底 50/50</span></label>
+          <label><input type="radio" name="firstGold" value="guaranteed"><span>大保底必中</span></label>
+        </div>
+        <div class="slider-row">
+          <div class="slider-head">
+            <label for="charPityN" style="color:#c6cede;font-size:13px">已垫抽数</label>
+            <div class="v"><input type="number" class="mini" id="charPityN" value="0" min="0" max="89" step="1"><small>抽</small></div>
+          </div>
+          <input type="range" id="charPity" min="0" max="89" step="1" value="0">
+        </div>
+        <div class="field">
+          <label>连歪次数</label>
+          <select id="charStreak">
+            <option value="0">0 次</option><option value="1">1 次</option>
+            <option value="2">2 次</option><option value="3">3 次（必中）</option>
+          </select>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2>武器池初始状态</h2>
+        <div class="slider-row">
+          <div class="slider-head">
+            <label for="weaponPityN" style="color:#c6cede;font-size:13px">已垫抽数</label>
+            <div class="v"><input type="number" class="mini" id="weaponPityN" value="0" min="0" max="79" step="1"><small>抽</small></div>
+          </div>
+          <input type="range" id="weaponPity" min="0" max="79" step="1" value="0">
+        </div>
+        <div class="field">
+          <label>命定值</label>
+          <select id="weaponFate"><option value="0">0</option><option value="1">1（必中）</option></select>
+        </div>
+      </section>
+
+      <section class="card">
+        <details class="adv">
+          <summary>个人仓库（<span id="rosterCount">96</span> 个角色，点开可改命座）</summary>
+          <div class="inner">
+            <input class="txt" id="rosterSearch" placeholder="搜索角色名…">
+            
+            <div class="roster-grid" id="rosterGrid"></div>
+            <div class="note" id="rosterNote" style="margin-top:8px">数字 = 命座（0–6），-1 = 未拥有。</div>
+
+            <div class="rs-title">武器<span class="rs-sub">勾选 = 已拥有</span></div>
+            <input class="txt" id="weaponSearch" placeholder="搜索武器…">
+            <div class="roster-grid" id="weaponGrid"></div>
+
+            <div class="btn-row" style="margin-top:10px">
+              <button class="btn ghost" id="btnExpJs">导出 roster.js</button>
+              <button class="btn ghost" id="btnExpJson">导出 roster.json</button>
+            </div>
+            <div class="note" id="expNote">下载后替换 data/ 下的同名文件，刷新页面即可生效。</div>
+          </div>
+        </details>
+      </section>
+    </aside>
+
+    <main>
+      <div class="col-head"><b>2</b>结果</div>
+      <section class="card hero">
+        <div class="main">
+          <div class="cmpK" id="heroLabel" style="margin-bottom:12px">正在计算…</div>
+          <div class="cmp">
+            <div class="cmpItem"><div class="cmpK">不含星辉返利</div><div class="cmpV" id="pMain">—</div></div>
+            <div class="cmpArrow">→</div>
+            <div class="cmpItem hi"><div class="cmpK">含星辉返利</div><div class="cmpV" id="pRefund">—</div></div>
+            <div class="cmpDelta"><div class="cmpK">返利多出</div><div class="cmpV2" id="pDelta">—</div></div>
+          </div>
+          <div class="pdesc" id="pDesc">计算中…</div>
+        </div>
+        <div class="metrics">
+          <div class="metric"><div class="k">期望达成抽数</div><div class="v" id="mMean">—<span>抽</span></div></div>
+          <div class="metric"><div class="k">中位数</div><div class="v" id="mMedian">—<span>抽</span></div></div>
+          <div class="metric"><div class="k">90% 玩家达成</div><div class="v" id="m90">—<span>抽内</span></div></div>
+          <div class="metric"><div class="k">99% 玩家达成</div><div class="v" id="m99">—<span>抽内</span></div></div>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2>结果分解<span class="tag" id="failTag"></span></h2>
+        <div class="stack">
+          <div class="seg-a" id="segA" style="width:0%"></div>
+          <div class="seg-b" id="segB" style="width:0%"></div>
+          <div class="seg-c" id="segC" style="width:100%"></div>
+        </div>
+        <div class="legend">
+          <div><i style="background:linear-gradient(180deg,#f0d19a,#c99a44)"></i>全部达成 <b id="lgA">—</b></div>
+          <div><i style="background:linear-gradient(180deg,#5b7fd4,#3f5d9e)"></i>角色齐·武器不足 <b id="lgB">—</b></div>
+          <div><i style="background:rgba(255,255,255,.14)"></i>角色未齐 <b id="lgC">—</b></div>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2>星辉来源<span class="tag" id="slTag">按个人仓库 · 蒙特卡洛</span></h2>
+        <div class="sl-book" id="slBook"></div>
+        <div class="note" id="slNote">改仓库或卡池后自动重算。</div>
+      </section>
+
+      <section class="card">
+        <h2>达成概率曲线<span class="tag">横轴 = 累计抽数 · 竖虚线 = 你的预算</span></h2>
+        <div class="chartwrap">
+          <canvas id="chart"></canvas>
+          <div class="tip" id="tip"><div class="t1"></div><div class="t2"></div></div>
+        </div>
+        <div class="chartLegend">
+          <div><i style="background:#f3d9a4"></i>不含返利（精确 DP）</div>
+          <div><i style="background:#7aa2f7"></i>含星辉返利（蒙特卡洛）</div>
+          <div><i style="background:rgba(233,195,124,.45);width:2px;height:10px"></i>你的预算</div>
+        </div>
+        <div class="chips" id="chips"></div>
+      </section>
+
+      <section class="card">
+        <h2>校验与明细<span class="tag">精确 DP vs 蒙特卡洛</span></h2>
+        <div class="btn-row" style="margin-top:0">
+          <button class="btn" id="btnMC">蒙特卡洛校验</button>
+          <button class="btn ghost" id="btnReset">恢复默认卡池</button>
+        </div>
+        <div class="summary" id="mcSummary"></div>
+      </section>
+    </main>
+  </div>
+
+  <footer>
+    一期 = 角色池① + 角色池②（共享垫抽 / 大保底 / 捕获明光）+ 武器池（两把 UP 共池，定轨先①后②）。<br>
+    角色“先①后②、拿齐再转武器”为随机占优策略；星辉按 5 星辉 = 1 抽，仅统计本期抽卡产生的返还。
+  </footer>
+</div>
+
+<script src="engine.js"></script>
+<script src="data/roster.js"></script>
+<script src="starlight.js"></script>
+
+<script>
+(function () {
+  'use strict';
+  var E = window.GachaEngine, SL = window.Starlight, D = window.GACHA_DATA;
+  if (!E || !SL || !D) return;
+  var $ = function (s) { return document.querySelector(s); };
+  var val = function (id, d) { var el = document.getElementById(id); var v = el ? parseFloat(el.value) : NaN; return isFinite(v) ? v : d; };
+  var clamp = function (v, a, b) { return Math.max(a, Math.min(b, v)); };
+
+  /* ---------- 卡池下拉（可搜索 + 头像） ---------- */
+  var EXCLUDE = /旅行者|埃洛伊|奇偶|派蒙/;
+  var c5 = [], c4 = [], w5 = [], w4 = [];
+  Object.keys(D.allChars || {}).forEach(function (n) {
+    if (EXCLUDE.test(n)) return;
+    (D.allChars[n] === 5 ? c5 : c4).push(n);
+  });
+  Object.keys(D.allWeapons || {}).forEach(function (n) {
+    if (D.allWeapons[n] === 5) w5.push(n);
+    else if (D.allWeapons[n] === 4) w4.push(n);
+  });
+  c5.sort(); c4.sort(); w5.sort(); w4.sort();
+
+  function starOf(name, kind, defStar) {
+    if (kind === 'wep') return (D.allWeapons && D.allWeapons[name]) || defStar || 4;
+    return (D.allChars && D.allChars[name]) || defStar || 5;
+  }
+  function colorOf(name, kind, defStar) {
+    var st = starOf(name, kind, defStar);
+    return st >= 5 ? '#e9c37c' : (st === 4 ? '#b08cff' : '#8b96ab');
+  }
+  function imgOf(name, kind) {
+    return (kind === 'wep' ? 'assets/weapon/' : 'assets/char/') + name + '.webp';
+  }
+
+  var DD = {}, openDD = null;
+  var AUTO_SIG = true;                        // 选角色时自动匹配专武
+  function autoMatchWeapon(charId) {
+    if (!AUTO_SIG) return;
+    var name = ddVal(charId);
+    var sig = (D.signature || {})[name];
+    if (!sig) return;
+    var target = (charId === 'up5A') ? 'w1' : 'w2';
+    if (ddVal(target) !== sig) ddSet(target, sig);
+  }
+  function ddVal(id) { return DD[id] ? DD[id].value : ''; }
+  function ddSet(id, v) { if (DD[id]) DD[id].set(v); }
+
+  function makeDD(id, kind, list, def, defStar) {
+    var host = document.getElementById(id);
+    if (!host) return;
+    host.classList.add('dd');
+    host.innerHTML =
+      '<button type="button" class="dd-btn">' +
+        '<img class="dd-av" alt="" onerror="this.style.visibility=\'hidden\'">' +
+        '<span class="dd-name"></span><i class="dd-caret"></i></button>' +
+      '<div class="dd-pop"><input class="dd-search" placeholder="搜索名字…">' +
+        '<div class="dd-list"></div></div>';
+
+    var st = { value: def || '', kind: kind, defStar: defStar || (kind === 'wep' ? 4 : 5),
+               list: list.slice(), open: false };
+    DD[id] = st;
+
+    var btn = host.querySelector('.dd-btn');
+    var av = host.querySelector('.dd-av');
+    var nm = host.querySelector('.dd-name');
+    var search = host.querySelector('.dd-search');
+    var listEl = host.querySelector('.dd-list');
+
+    function paint() {
+      var v = st.value;
+      if (!v || v === '__c__') {
+        nm.textContent = '（未选择）';
+        av.style.visibility = 'hidden';
+        btn.style.color = 'var(--muted)';
+      } else {
+        nm.textContent = v;
+        av.src = imgOf(v, st.kind);
+        av.style.visibility = 'visible';
+        btn.style.color = colorOf(v, st.kind, st.defStar);
+      }
+    }
+    function renderList() {
+      var q = search.value.trim();
+      var items = st.list.filter(function (n) { return !q || n.indexOf(q) >= 0; });
+      var html = items.map(function (n) {
+        var r = starOf(n, st.kind, st.defStar);
+        return '<div class="dd-item ' + (r >= 5 ? 'r5' : 'r4') + (n === st.value ? ' on' : '') +
+          '" data-v="' + n + '"><img loading="lazy" src="' + imgOf(n, st.kind) +
+          '" onerror="this.remove()"><span>' + n + '</span></div>';
+      }).join('');
+      if (!items.length) {
+        html = '<div class="dd-item" style="color:var(--muted2)">没有匹配项</div>';
+      }
+      html += '<div class="dd-item custom" data-v="__c__">＋ 自定义…</div>';
+      listEl.innerHTML = html;
+    }
+    function cardOf(el) {
+      while (el && !(el.classList && el.classList.contains('card'))) el = el.parentElement;
+      return el;
+    }
+    function open() {
+      if (openDD && openDD !== st) openDD.close();
+      st.open = true; host.classList.add('open'); openDD = st;
+      var c = cardOf(host); if (c) c.classList.add('dd-open');
+      var r = host.getBoundingClientRect();
+      if (r.bottom + 300 > window.innerHeight && r.top > 300) host.classList.add('up');
+      else host.classList.remove('up');
+      var c0 = cardOf(host);
+      var rightEdge = c0 ? c0.getBoundingClientRect().right : window.innerWidth;
+      if (rightEdge - r.right < 210) host.classList.add('right');
+      else host.classList.remove('right');
+      search.value = ''; renderList();
+      setTimeout(function () { search.focus(); }, 20);
+    }
+    function close() {
+      st.open = false; host.classList.remove('open');
+      var c = cardOf(host); if (c) c.classList.remove('dd-open');
+      if (openDD === st) openDD = null;
+    }
+    st.close = close;
+    st.set = function (v) {
+      st.value = v; paint();
+      if (id === 'up5A' || id === 'up5B') autoMatchWeapon(id);
+      renderTargets(); schedule();
+    };
+
+    btn.addEventListener('click', function (e) { e.stopPropagation(); if (st.open) close(); else open(); });
+    search.addEventListener('input', renderList);
+    search.addEventListener('click', function (e) { e.stopPropagation(); });
+    listEl.addEventListener('click', function (e) {
+      e.stopPropagation();
+      var it = e.target.closest('.dd-item');
+      if (!it || !it.dataset.v) return;
+      var v = it.dataset.v;
+      if (v === '__c__') {
+        var name = (window.prompt('输入名称（新角色 / 新武器直接写名字即可）') || '').trim();
+        if (name) {
+          if (st.list.indexOf(name) < 0) st.list.unshift(name);
+          st.set(name);
+        }
+      } else {
+        st.set(v);
+      }
+      close();
+    });
+    paint();
+  }
+
+  var asig = document.getElementById('autoSig');
+  if (asig) asig.addEventListener('change', function () {
+    AUTO_SIG = asig.checked;
+    if (AUTO_SIG) { autoMatchWeapon('up5A'); autoMatchWeapon('up5B'); renderTargets(); schedule(); }
+  });
+
+  document.addEventListener('click', function () { if (openDD) openDD.close(); });
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && openDD) openDD.close(); });
+
+  /* ---------- 目标行（头像 + 名字） ---------- */
+  function renderTargets() {
+    [['tavA', 'tnmA', ddVal('up5A'), 'char'],
+     ['tavB', 'tnmB', ddVal('up5B'), 'char'],
+     ['tavP', 'tnmP', ddVal('w1'), 'wep'],
+     ['tavQ', 'tnmQ', ddVal('w2'), 'wep']].forEach(function (m) {
+      var av = document.getElementById(m[0]), nm = document.getElementById(m[1]);
+      if (!av || !nm) return;
+      var v = m[2];
+      if (!v || v === '__c__') {
+        av.style.visibility = 'hidden';
+        nm.textContent = '（未选择）';
+        nm.style.color = 'var(--muted2)';
+        return;
+      }
+      var defStar = (m[3] === 'wep') ? 5 : 5;
+      av.src = imgOf(v, m[3]);
+      av.style.visibility = 'visible';
+      nm.textContent = v;
+      nm.style.color = colorOf(v, m[3], defStar);
+    });
+  }
+
+  function buildPools() {
+    $('#poolA').innerHTML = '<div class="pool-title">角色池 ①</div>' +
+      '<div class="dd" id="up5A"></div>' +
+      '<div class="tri" style="margin-top:6px"><div class="dd" id="up4A1"></div>' +
+      '<div class="dd" id="up4A2"></div><div class="dd" id="up4A3"></div></div>';
+    $('#poolB').innerHTML = '<div class="pool-title">角色池 ②</div>' +
+      '<div class="dd" id="up5B"></div>' +
+      '<div class="tri" style="margin-top:6px"><div class="dd" id="up4B1"></div>' +
+      '<div class="dd" id="up4B2"></div><div class="dd" id="up4B3"></div></div>';
+    $('#poolW').innerHTML = '<div class="pool-title">武器池（两把 5★ UP 共池）</div>' +
+      '<div class="tri2" style="margin-top:2px"><div class="dd" id="w1"></div>' +
+      '<div class="dd" id="w2"></div></div>' +
+      '<div class="pool-sub">4★ UP 武器 ×5</div>' +
+      '<div class="grid5"><div class="dd" id="w4a"></div><div class="dd" id="w4b"></div>' +
+      '<div class="dd" id="w4c"></div><div class="dd" id="w4d"></div>' +
+      '<div class="dd" id="w4e"></div></div>';
+    makeDD('up5A', 'char', c5, '玛薇卡', 5);
+    makeDD('up4A1', 'char', c4, '香菱', 4); makeDD('up4A2', 'char', c4, '行秋', 4); makeDD('up4A3', 'char', c4, '班尼特', 4);
+    makeDD('up5B', 'char', c5, '芙宁娜', 5);
+    makeDD('up4B1', 'char', c4, '北斗', 4); makeDD('up4B2', 'char', c4, '凝光', 4); makeDD('up4B3', 'char', c4, '坎蒂丝', 4);
+    makeDD('w1', 'wep', w5, '焚曜千阳', 5); makeDD('w2', 'wep', w5, '静水流涌之辉', 5);
+    makeDD('w4a', 'wep', w4, '西风剑', 4); makeDD('w4b', 'wep', w4, '祭礼剑', 4);
+    makeDD('w4c', 'wep', w4, '匣里龙吟', 4); makeDD('w4d', 'wep', w4, '雨裁', 4);
+    makeDD('w4e', 'wep', w4, '弓藏', 4);
+    renderTargets();
+  }
+  buildPools();
+
+  /* ---------- 个人仓库：全部角色，未拥有 = -1；武器只记有/无 ---------- */
+  function allNames() {
+    var set = {}, out = [];
+    Object.keys(D.allChars || {}).forEach(function (n) {
+      if (set[n] || /^旅行者/.test(n) || n === '派蒙') return;
+      set[n] = 1; out.push(n);
+    });
+    Object.keys(D.chars).forEach(function (n) { if (!set[n]) { set[n] = 1; out.push(n); } });
+    return out;
+  }
+  function cOf(n) { return (D.chars[n] && D.chars[n].c >= 0) ? D.chars[n].c : -1; }
+  function starOfChar(n) { return (D.allChars && D.allChars[n]) || (D.chars[n] && D.chars[n].s) || 5; }
+  function starOfWep(n) { return (D.allWeapons && D.allWeapons[n]) || (D.weapons[n] && D.weapons[n].s) || 4; }
+  function wOwned(n) { return !!(D.weapons[n] && D.weapons[n].n > 0); }
+
+  function renderRoster() {
+    var names = allNames().sort(function (a, b) {
+      var d = cOf(b) - cOf(a);
+      return d !== 0 ? d : a.localeCompare(b, 'zh');
+    });
+    var owned = names.filter(function (n) { return cOf(n) >= 0; }).length;
+    $('#rosterCount').textContent = names.length;
+    var wnum = Object.keys(D.weapons).filter(function (k) { return D.weapons[k].n > 0; }).length;
+    $('#rosterNote').textContent = '角色 ' + names.length + ' 个（已拥有 ' + owned + '）· 武器已拥有 ' + wnum +
+      ' 把；数字 = 命座（0–6），-1 = 未拥有。改动即时生效，只影响本页计算。';
+    $('#rosterGrid').innerHTML = names.map(function (n) {
+      var c = cOf(n), st = starOfChar(n);
+      return '<div class="roster-item ' + (st === 5 ? 'r5' : 'r4') +
+        (c >= 6 ? ' c6' : '') + (c < 0 ? ' off' : '') + '" data-n="' + n +
+        '"><img class="av" loading="lazy" src="assets/char/' + n + '.webp" onerror="this.remove()">' +
+        '<span title="' + n + '">' + n +
+        '</span><input type="number" min="-1" max="6" step="1" value="' + c + '"></div>';
+    }).join('');
+  }
+  renderRoster();
+
+  $('#rosterGrid').addEventListener('input', function (e) {
+    var t = e.target;
+    if (t.tagName !== 'INPUT') return;
+    var box = t.closest('.roster-item');
+    var n = box.dataset.n;
+    var raw = parseInt(t.value, 10);
+    var v = isFinite(raw) ? clamp(raw, -1, 6) : -1;
+    if (!D.chars[n]) D.chars[n] = { c: v, s: starOfChar(n) };
+    else D.chars[n].c = v;
+    box.classList.toggle('c6', v >= 6);
+    box.classList.toggle('off', v < 0);
+    schedule();
+  });
+  $('#rosterSearch').addEventListener('input', function () {
+    var q = this.value.trim();
+    Array.prototype.forEach.call($('#rosterGrid').children, function (el) {
+      el.style.display = (!q || el.dataset.n.indexOf(q) >= 0) ? '' : 'none';
+    });
+  });
+
+  /* ---------- 武器：只有“有/无” ---------- */
+  function weaponNames() {
+    var set = {}, out = [];
+    Object.keys(D.allWeapons || {}).forEach(function (n) {
+      if (!set[n] && starOfWep(n) >= 4) { set[n] = 1; out.push(n); }
+    });
+    Object.keys(D.weapons || {}).forEach(function (n) { if (!set[n]) { set[n] = 1; out.push(n); } });
+    [].concat(D.std5weapons || [], D.std4weapons || []).forEach(function (n) {
+      if (!set[n]) { set[n] = 1; out.push(n); }
+    });
+    return out.sort(function (a, b) {
+      var oa = wOwned(a) ? 0 : 1, ob = wOwned(b) ? 0 : 1;
+      if (oa !== ob) return oa - ob;
+      var sa = starOfWep(a), sb = starOfWep(b);
+      if (sa !== sb) return sb - sa;
+      return a.localeCompare(b, 'zh');
+    });
+  }
+  function renderWeapons() {
+    $('#weaponGrid').innerHTML = weaponNames().map(function (n) {
+      var st = starOfWep(n), on = wOwned(n);
+      var cls = st >= 5 ? 'r5' : (st === 4 ? 'r4' : 'r3');
+      return '<div class="roster-item wep ' + cls + (on ? '' : ' off') +
+        '" data-w="' + n + '"><img class="av" loading="lazy" src="assets/weapon/' + n +
+        '.webp" onerror="this.remove()"><span title="' + n + '">' + n +
+        '</span><input type="checkbox" class="chk"' + (on ? ' checked' : '') + '></div>';
+    }).join('');
+  }
+  renderWeapons();
+
+  $('#weaponGrid').addEventListener('change', function (e) {
+    var t = e.target;
+    if (t.type !== 'checkbox') return;
+    var box = t.closest('.roster-item');
+    var n = box.dataset.w;
+    if (t.checked) D.weapons[n] = { n: 1, s: starOfWep(n) };
+    else delete D.weapons[n];
+    box.classList.toggle('off', !t.checked);
+    schedule();
+  });
+  $('#weaponSearch').addEventListener('input', function () {
+    var q = this.value.trim();
+    Array.prototype.forEach.call($('#weaponGrid').children, function (el) {
+      el.style.display = (!q || el.dataset.w.indexOf(q) >= 0) ? '' : 'none';
+    });
+  });
+
+  /* ---------- 导出到本地 ---------- */
+  function exportJson() {
+    var chars = {}, weapons = {};
+    Object.keys(D.chars).forEach(function (n) {
+      if (D.chars[n].c >= 0) chars[n] = { c: D.chars[n].c, star: (D.allChars && D.allChars[n]) || D.chars[n].s || 5 };
+    });
+    Object.keys(D.weapons).forEach(function (n) {
+      if (D.weapons[n].n > 0) weapons[n] = { count: 1, star: starOfWep(n) };
+    });
+    return {
+      _comment: '个人仓库：characters 里 c=命座(0-6)；weapons 里 count=已获得次数。由网页导出。',
+      updated: new Date().toISOString().slice(0, 10),
+      source: '网页导出',
+      characters: chars, weapons: weapons,
+      standard5: D.std5 || [], standard5weapons: D.std5weapons || [],
+      standard4weapons: D.std4weapons || [], standard4chars: D.std4chars || []
+    };
+  }
+  function download(name, text) {
+    var blob = new Blob([text], { type: 'application/json;charset=utf-8' });
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = name;
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(function () { URL.revokeObjectURL(a.href); a.remove(); }, 1500);
+    $('#expNote').innerHTML = '已下载 <b>' + name + '</b> → 替换 <code>data/' + name + '</code> 后刷新页面';
+  }
+  $('#btnExpJs').addEventListener('click', function () {
+    var d = exportJson();
+    var data = {
+      updated: d.updated, note: '角色 c=命座(0-6)，未列出=未拥有；武器 n=已获得次数',
+      chars: d.characters, weapons: d.weapons,
+      std5: d.standard5, std5weapons: d.standard5weapons,
+      std4chars: d.standard4chars, std4weapons: d.standard4weapons,
+      allChars: D.allChars || {}, allWeapons: D.allWeapons || {}
+    };
+    download('roster.js', '/* 由网页导出 */\nwindow.GACHA_DATA = ' + JSON.stringify(data, null, 1) + ';\n');
+  });
+  $('#btnExpJson').addEventListener('click', function () {
+    download('roster.json', JSON.stringify(exportJson(), null, 1));
+  });
+
+  $('#rosterGrid').addEventListener('input', function (e) {
+    var t = e.target;
+    if (t.tagName !== 'INPUT') return;
+    var box = t.closest('.roster-item');
+    var n = box.dataset.n;
+    var raw = parseInt(t.value, 10);
+    var v = isFinite(raw) ? clamp(raw, -1, 6) : -1;
+    if (!D.chars[n]) D.chars[n] = { c: v, star: (D.allChars && D.allChars[n]) || 5 };
+    else D.chars[n].c = v;
+    box.classList.toggle('c6', v >= 6);
+    box.classList.toggle('cnone', v < 0);
+    schedule();
+  });
+  $('#rosterSearch').addEventListener('input', function () {
+    var q = this.value.trim();
+    Array.prototype.forEach.call($('#rosterGrid').children, function (el) {
+      el.style.display = (!q || el.dataset.n.indexOf(q) >= 0) ? '' : 'none';
+    });
+  });
+
+  /* ---------- 读取输入 ---------- */
+  function poolsOf() {
+    var f = ddVal;
+    return {
+      charA: { up5: f('up5A') || 'UP五星①', up4: [f('up4A1'), f('up4A2'), f('up4A3')].filter(Boolean) },
+      charB: { up5: f('up5B') || 'UP五星②', up4: [f('up4B1'), f('up4B2'), f('up4B3')].filter(Boolean) },
+      weapon: { up5: [f('w1') || 'UP武器①', f('w2') || 'UP武器②'],
+                up4: [f('w4a'), f('w4b'), f('w4c'), f('w4d'), f('w4e')].filter(Boolean) }
+    };
+  }
+  function state() {
+    return {
+      N: clamp(Math.round(val('pullsN', 360)), 1, 2500),
+      A: clamp(Math.round(val('tA', 1)), 0, 6),
+      B: clamp(Math.round(val('tB', 1)), 0, 6),
+      P: clamp(Math.round(val('tP', 1)), 0, 5),
+      Q: clamp(Math.round(val('tQ', 0)), 0, 5),
+      initC: {
+        pity: clamp(Math.round(val('charPityN', 0)), 0, 89),
+        guaranteed: ($('input[name=firstGold]:checked') || {}).value === 'guaranteed',
+        streak: parseInt(($('#charStreak') || {}).value, 10) || 0
+      },
+      initW: {
+        pity: clamp(Math.round(val('weaponPityN', 0)), 0, 79),
+        fate: parseInt(($('#weaponFate') || {}).value, 10) || 0
+      }
+    };
+  }
+
+  /* ---------- 计算 ---------- */
+  var last = { cdf: null, N: 360, H: 600, chartMax: 400, hover: -1 };
+
+  function cumsum(f) {
+    var out = new Float64Array(f.length), a = 0;
+    for (var i = 0; i < f.length; i++) { a += f[i]; out[i] = a; }
+    return out;
+  }
+  function stats(cdf) {
+    var N = cdf.length - 1, mean = 0, prev = 0;
+    for (var n = 0; n <= N; n++) { mean += n * (cdf[n] - prev); prev = cdf[n]; }
+    var q = {}, qs = [0.5, 0.9, 0.99];
+    qs.forEach(function (p) {
+      var i = 0; while (i < N && cdf[i] < p) i++; q[p] = i;
+    });
+    return { mean: mean, median: q[0.5], q90: q[0.9], q99: q[0.99] };
+  }
+
+  function compute() {
+    var s = state(), cfg = E.resolveConfig({});
+    var t0 = performance.now();
+    var H = Math.min(3200, Math.max(s.N, 2 * cfg.char.hard * (s.A + s.B) + 2 * cfg.weapon.hard * (s.P + s.Q) + 40));
+    var pl = poolsOf(), std5 = D.std5 || [];
+    var cOpts = { stdCount: std5.length,
+                  upAInStd: std5.indexOf(pl.charA.up5) >= 0,
+                  upBInStd: std5.indexOf(pl.charB.up5) >= 0 };
+    var stdW = D.std5weapons || [];
+    var wOpts = { stdWCount: stdW.length,
+                  upW1InStd: stdW.indexOf(pl.weapon.up5[0]) >= 0,
+                  upW2InStd: stdW.indexOf(pl.weapon.up5[1]) >= 0 };
+    var f1 = E.charPassage2(H, s.A, s.B, cfg.char, s.initC, cOpts);
+    var f2 = E.weaponPassage2(H, s.P, s.Q, cfg.weapon, s.initW, wOpts);
+    var cdf = E.convCdf(f1, f2, H);
+    var cChar = cumsum(f1), cWep = cumsum(f2);
+    var st = stats(cdf);
+    var el = performance.now() - t0;
+    last = { cdf: cdf, refundCdf: null, N: s.N, H: H, chartMax: Math.min(H, Math.max(s.N, Math.round(st.q99) + 10)), hover: -1, st: st };
+
+    var P = Math.min(1, cdf[s.N]);
+    var pC = Math.min(1, cChar[s.N]), pW = Math.min(1, cWep[s.N]);
+    $('#heroLabel').innerHTML = '在 <b>' + s.N + ' 抽</b>内 · 角色①×<b>' + s.A + '</b> + 角色②×<b>' + s.B +
+      '</b> + 武器①×<b>' + s.P + '</b> + 武器②×<b>' + s.Q + '</b> 全部达成';
+    $('#pRefund').innerHTML = '<span style="color:var(--muted2);font-size:20px">计算中…</span>';
+    $('#pDelta').textContent = '—';
+    $('#pMain').innerHTML = (P * 100).toFixed(2) + '<small>%</small>';
+    $('#pDesc').innerHTML = '在 <b>' + s.N + ' 抽</b>内：角色①×' + s.A + ' + 角色②×' + s.B + ' + 武器①×' + s.P + ' + 武器②×' + s.Q +
+      ' 全部达成 <b>' + (P * 100).toFixed(2) + '%</b>。' +
+      (st.q90 > s.N ? '要有 90% 把握需 <b>' + st.q90 + ' 抽</b>。' : '') +
+      '<span style="color:var(--muted2)"> 用时 ' + el.toFixed(0) + ' ms</span>';
+    $('#mMean').innerHTML = Math.round(st.mean) + '<span>抽</span>';
+    $('#mMedian').innerHTML = st.median + '<span>抽</span>';
+    $('#m90').innerHTML = st.q90 + '<span>抽内</span>';
+    $('#m99').innerHTML = st.q99 + '<span>抽内</span>';
+
+    var a = P, b = Math.max(0, pC - P), c = Math.max(0, 1 - pC), tot = a + b + c || 1;
+    $('#segA').style.width = a / tot * 100 + '%';
+    $('#segB').style.width = b / tot * 100 + '%';
+    $('#segC').style.width = c / tot * 100 + '%';
+    $('#lgA').textContent = (P * 100).toFixed(2) + '%';
+    $('#lgB').textContent = (b * 100).toFixed(2) + '%';
+    $('#lgC').textContent = (c * 100).toFixed(2) + '%';
+    $('#failTag').textContent = '角色全达成 ' + (pC * 100).toFixed(2) + '% · 武器全达成 ' + (pW * 100).toFixed(2) + '%';
+
+    $('#chips').innerHTML = '<div class="chip">角色侧 <b>' + (pC * 100).toFixed(2) + '%</b></div>' +
+      '<div class="chip">武器侧 <b>' + (pW * 100).toFixed(2) + '%</b></div>' +
+      '<div class="chip">50% 需 <b>' + st.median + '</b> 抽</div>' +
+      '<div class="chip">90% 需 <b>' + st.q90 + '</b> 抽</div>' +
+      '<div class="chip">99% 需 <b>' + st.q99 + '</b> 抽</div>';
+
+    drawChart(-1);
+    runRefund(s, P);
+  }
+
+  /* ---------- 星辉返利（蒙特卡洛） ---------- */
+  var refundSeq = 0;
+  function runRefund(s, baseP) {
+    var mySeq = ++refundSeq;
+    $('#slTag').textContent = '计算中…';
+    setTimeout(function () {
+      var horizon = Math.max(s.N, last.chartMax || s.N);
+      var runs = Math.max(2500, Math.min(20000, Math.round(1.2e7 / Math.max(horizon, 1))));
+      var r = SL.monteCarlo(s.N, s.A, s.B, s.P, s.Q, D, poolsOf(), {
+        runs: runs, horizon: horizon, seed: 20240828, init: {
+          charPity: s.initC.pity, charGuaranteed: s.initC.guaranteed, charStreak: s.initC.streak,
+          weaponPity: s.initW.pity, weaponFate: s.initW.fate
+        }
+      });
+      if (mySeq !== refundSeq) return;   // 已有更新的计算，丢弃这次结果
+      $('#pRefund').innerHTML = (r.p * 100).toFixed(2) + '<small>%</small>';
+      $('#pDelta').textContent = '+' + ((r.p - baseP) * 100).toFixed(2) + 'pt　+' + r.extra.toFixed(1) + ' 抽';
+      last.refundCdf = r.cdf;
+      drawChart(last.hover);
+      var ownedNow = Object.keys(D.chars).filter(function (k) { return D.chars[k].c >= 0; }).length;
+      $('#slNote').innerHTML = (ownedNow === 0 ? '<b style="color:#e9c37c">仓库为空：角色都按“新角色”算（0 星辉），返利会偏低</b>；展开「个人仓库」填入命座后才是准确值。<br>' : '') +
+        '蒙特卡洛 <b style="color:#cdd6e6">' + runs.toLocaleString() + '</b> 次（±' +
+        (r.se * 100).toFixed(2) + '%），平均实际消耗 ' + r.pulls.toFixed(0) + ' 抽；返利相当于预算的 ' +
+        (r.extra / s.N * 100).toFixed(2) + '%。';
+      $('#slBook').innerHTML = '<span>5★角色 <b>' + (r.book.c5 / 5).toFixed(1) + '</b></span>' +
+        '<span>4★角色 <b>' + (r.book.c4 / 5).toFixed(1) + '</b></span>' +
+        '<span>5★武器 <b>' + (r.book.w5 / 5).toFixed(1) + '</b></span>' +
+        '<span>4★武器 <b>' + (r.book.w4 / 5).toFixed(1) + '</b></span>';
+      $('#slTag').textContent = '按个人仓库 · 蒙特卡洛';
+    }, 20);
+  }
+
+  /* ---------- 图表 ---------- */
+  function drawChart(hover) {
+    var cv = $('#chart'); if (!cv || !last.cdf) return;
+    var dpr = Math.min(window.devicePixelRatio || 1, 2);
+    var rect = cv.getBoundingClientRect();
+    var w = Math.max(320, rect.width), h = Math.max(160, rect.height);
+    if (cv.width !== Math.round(w * dpr) || cv.height !== Math.round(h * dpr)) {
+      cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr);
+    }
+    var ctx = cv.getContext('2d');
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.clearRect(0, 0, w, h);
+    var pad = { l: 46, r: 16, t: 14, b: 26 };
+    var pw = w - pad.l - pad.r, ph = h - pad.t - pad.b;
+    var XM = last.chartMax, N = last.N;
+    var X = function (n) { return pad.l + (XM ? n / XM : 0) * pw; };
+    var Y = function (v) { return pad.t + (1 - v) * ph; };
+
+    if (N < XM) { ctx.fillStyle = 'rgba(233,195,124,.05)'; ctx.fillRect(pad.l, pad.t, X(N) - pad.l, ph); }
+    ctx.font = '11px -apple-system,"Segoe UI","Microsoft YaHei",sans-serif';
+    ctx.textBaseline = 'middle';
+    for (var g = 0; g <= 4; g++) {
+      var v = g / 4, y = Y(v);
+      ctx.strokeStyle = 'rgba(255,255,255,' + (g === 0 ? 0.13 : 0.045) + ')';
+      ctx.beginPath(); ctx.moveTo(pad.l, y + .5); ctx.lineTo(w - pad.r, y + .5); ctx.stroke();
+      ctx.fillStyle = 'rgba(139,150,171,.9)'; ctx.textAlign = 'right';
+      ctx.fillText(Math.round(v * 100) + '%', pad.l - 9, y);
+    }
+    var STEPS = [10, 15, 20, 30, 45, 60, 90, 120, 180, 240, 300, 360, 480, 600, 900, 1200];
+    var step = STEPS[STEPS.length - 1];
+    for (var si = 0; si < STEPS.length; si++) { if (XM / STEPS[si] <= 5.5) { step = STEPS[si]; break; } }
+    ctx.textAlign = 'center'; ctx.fillStyle = 'rgba(139,150,171,.75)';
+    for (var n = 0; n <= XM; n += step) {
+      if (X(n) > w - pad.r - 12) continue;
+      ctx.fillText(String(n), X(n), h - 10);
+    }
+    var grad = ctx.createLinearGradient(0, pad.t, 0, pad.t + ph);
+    grad.addColorStop(0, 'rgba(233,195,124,.32)');
+    grad.addColorStop(.55, 'rgba(233,195,124,.10)');
+    grad.addColorStop(1, 'rgba(233,195,124,0)');
+    ctx.beginPath(); ctx.moveTo(X(0), Y(0));
+    for (var i = 0; i <= XM; i++) ctx.lineTo(X(i), Y(last.cdf[i]));
+    ctx.lineTo(X(XM), Y(0)); ctx.closePath();
+    ctx.fillStyle = grad; ctx.fill();
+    ctx.beginPath(); ctx.strokeStyle = '#f3d9a4'; ctx.lineWidth = 2.2; ctx.lineJoin = 'round';
+    for (var j = 0; j <= XM; j++) { var xx = X(j), yy = Y(last.cdf[j]); j === 0 ? ctx.moveTo(xx, yy) : ctx.lineTo(xx, yy); }
+    ctx.stroke();
+
+    // 含返利（蒙特卡洛）曲线
+    if (last.refundCdf) {
+      ctx.beginPath();
+      ctx.setLineDash([5, 4]);
+      ctx.strokeStyle = 'rgba(122,162,247,.9)';
+      ctx.lineWidth = 1.8;
+      var drawn = false;
+      for (var q2 = 0; q2 <= XM; q2++) {
+        var rv = last.refundCdf[q2];
+        if (rv === undefined || rv === null) break;
+        var rx = X(q2), ry = Y(rv);
+        if (!drawn) { ctx.moveTo(rx, ry); drawn = true; } else ctx.lineTo(rx, ry);
+      }
+      ctx.stroke();
+      ctx.setLineDash([]);
+      if (drawn) {
+        var rN = Math.min(XM, last.refundCdf.length - 1);
+        var rpx = X(rN), rpy = Y(last.refundCdf[rN]);
+        ctx.beginPath(); ctx.arc(rpx, rpy, 6, 0, Math.PI * 2);
+        ctx.fillStyle = 'rgba(122,162,247,.18)'; ctx.fill();
+        ctx.beginPath(); ctx.arc(rpx, rpy, 3.4, 0, Math.PI * 2);
+        ctx.fillStyle = '#9fbbff'; ctx.fill();
+      }
+    }
+    if (N < XM) {
+      ctx.strokeStyle = 'rgba(233,195,124,.32)'; ctx.setLineDash([3, 4]);
+      ctx.beginPath(); ctx.moveTo(X(N), pad.t); ctx.lineTo(X(N), pad.t + ph); ctx.stroke();
+      ctx.setLineDash([]);
+    }
+    var px = X(N), py = Y(last.cdf[N]);
+    ctx.beginPath(); ctx.arc(px, py, 9, 0, Math.PI * 2); ctx.fillStyle = 'rgba(233,195,124,.16)'; ctx.fill();
+    ctx.beginPath(); ctx.arc(px, py, 4.5, 0, Math.PI * 2); ctx.fillStyle = '#f6e0b3'; ctx.fill();
+    if (hover >= 0 && hover <= XM) {
+      var hx = X(hover);
+      ctx.strokeStyle = 'rgba(255,255,255,.22)';
+      ctx.beginPath(); ctx.moveTo(hx, pad.t); ctx.lineTo(hx, pad.t + ph); ctx.stroke();
+      ctx.beginPath(); ctx.arc(hx, Y(last.cdf[hover]), 4, 0, Math.PI * 2); ctx.fillStyle = '#fff'; ctx.fill();
+    }
+  }
+  (function bindHover() {
+    var cv = $('#chart'), tip = $('#tip');
+    cv.addEventListener('mousemove', function (ev) {
+      if (!last.cdf) return;
+      var rect = cv.getBoundingClientRect(), padL = 46, padR = 16;
+      var x = (ev.clientX - rect.left - padL) / (rect.width - padL - padR);
+      x = Math.max(0, Math.min(1, x));
+      var idx = Math.round(x * last.chartMax);
+      last.hover = idx;
+      drawChart(idx);
+      tip.querySelector('.t1').textContent = '第 ' + idx + ' 抽' + (idx <= last.N ? '（预算内）' : '（超出预算）');
+      tip.querySelector('.t2').textContent = '达成概率 ' + (last.cdf[idx] * 100).toFixed(2) + '%';
+      tip.classList.add('on');
+      tip.style.left = (padL + (idx / last.chartMax) * (rect.width - padL - padR)) + 'px';
+      tip.style.top = (ev.clientY - rect.top) + 'px';
+    });
+    cv.addEventListener('mouseleave', function () { tip.classList.remove('on'); drawChart(-1); });
+  })();
+
+  /* ---------- 事件 ---------- */
+  var timer = null;
+  function schedule() { clearTimeout(timer); timer = setTimeout(compute, 260); }
+  Array.prototype.forEach.call(document.querySelectorAll('input, select'), function (el) {
+    el.addEventListener('input', function () {
+      if (el.id === 'pulls') $('#pullsN').value = el.value;
+      if (el.id === 'charPity') $('#charPityN').value = el.value;
+      if (el.id === 'weaponPity') $('#weaponPityN').value = el.value;
+      schedule();
+    });
+  });
+  $('#btnReset').addEventListener('click', function () {
+    ddSet('up5A', '玛薇卡'); ddSet('up5B', '芙宁娜');
+    ddSet('w1', '焚曜千阳'); ddSet('w2', '静水流涌之辉');
+    ddSet('up4A1', '香菱'); ddSet('up4A2', '行秋'); ddSet('up4A3', '班尼特');
+    ddSet('up4B1', '北斗'); ddSet('up4B2', '凝光'); ddSet('up4B3', '坎蒂丝');
+    ddSet('w4a', '西风剑'); ddSet('w4b', '祭礼剑'); ddSet('w4c', '匣里龙吟');
+    ddSet('w4d', '雨裁'); ddSet('w4e', '弓藏');
+    renderTargets();
+    compute();
+  });
+  $('#btnMC').addEventListener('click', function () {
+    var s = state();
+    $('#mcSummary').innerHTML = '蒙特卡洛运行中…';
+    setTimeout(function () {
+      var r = SL.monteCarlo(s.N, s.A, s.B, s.P, s.Q, D, poolsOf(), { runs: 30000, seed: 424242 });
+      var dp = last.cdf[s.N] * 100;
+      $('#mcSummary').innerHTML = '蒙特卡洛 <b>' + r.runs.toLocaleString() + '</b> 次：<b>' + (r.p * 100).toFixed(2) +
+        '%</b>（±' + (r.se * 100).toFixed(2) + '%）· 精确 DP <b>' + dp.toFixed(2) + '%</b> · 平均多抽 +' + r.extra.toFixed(1);
+    }, 20);
+  });
+  window.addEventListener('resize', function () { drawChart(last.hover); });
+
+
+  /* ---------- 帮助弹窗 ---------- */
+  (function () {
+    var m = $('#helpModal');
+    $('#btnHelp').addEventListener('click', function () { m.classList.add('on'); });
+    $('#btnHelpClose').addEventListener('click', function () { m.classList.remove('on'); });
+    var okBtn = document.getElementById('btnHelpOk');
+    if (okBtn) okBtn.addEventListener('click', function () { m.classList.remove('on'); });
+    setTimeout(function () { m.classList.add('on'); }, 350);   // 打开页面自动显示说明
+    m.addEventListener('click', function (e) { if (e.target === m) m.classList.remove('on'); });
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape') m.classList.remove('on');
+    });
+  })();
+
+  compute();
+})();
+</script>
+
+</body>
+</html>

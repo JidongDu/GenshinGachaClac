@@ -1,0 +1,22 @@
+# 抓取的图片素材（版权归米哈游，不入库，用 build_assets.py 生成）
+assets/
+
+# 个人抽卡记录 / 导出文件
+HoYo.Gacha_*.json
+*Uigf*.json
+*UIGF*.json
+
+# 构建产物
+*.zip
+_dist/
+__pycache__/
+*.pyc
+
+# 临时解压目录
+GenshinGachaCalc/
+
+# 编辑器 / 系统
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
