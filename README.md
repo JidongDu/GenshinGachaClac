@@ -72,10 +72,24 @@ build_data.py       data/*.json → data/roster.js（网页数据包）
 build_assets.py     从 bwiki 抓角色头像 / 武器图标到 assets/
 build_signature.py  从 bwiki 抓「角色 → 专武」对应
 sync_wiki_data.py   抓取最新角色 / 武器 / 常驻池，刷新数据库
-fetch_roster.py     可选：从米游社接口同步个人祈愿记录
+uigf_to_roster.py  从 UIGF 抽卡记录生成个人仓库
 data/               roster / charstars / weaponstars / signature / banner
 tests/              DP 与蒙特卡洛交叉验证
 ```
+
+## 用抽卡记录生成个人仓库
+
+如果用的是 uigf / hoYo-Gacha 之类的导出工具，可以直接从记录生成仓库：
+
+```bash
+python3 uigf_to_roster.py 抽卡记录.json
+```
+
+会算出每个角色的命座（抽到 N 个 → C(N−1)，上限 6）和拥有哪些武器，写进 `data/roster.json` 并重建 `roster.js`。
+
+- `--merge` 保留现有条目（旅行者、埃洛伊、奇偶这些不在卡池里的角色需要手动补）
+- `--all-weapons` 连 3 星武器也记录（默认只记 4★/5★）
+- 星辉商店、活动送的副本不在抽卡记录里，命座可能比实际少 1
 
 ## 更新数据
 
