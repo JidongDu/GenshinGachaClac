@@ -36,6 +36,18 @@
   /* ---------------- 单次模拟 ---------------- */
   /* 目标：角色①A 个 + 角色②B 个 + 武器①P 把 + 武器②Q 把
      一期 = 角色池① + 角色池②（共享垫抽/大保底）+ 武器池（两把 UP，定轨先①后②） */
+  // 平稳机制：n = 连续未出该类物品的抽数，j = n + 1
+  // 角色/常驻四星：W = 255 (j≤17)，W = 255 + 2550·(j−17) (j≥18)
+  // 武器活动四星：W = 300 (j≤14)，W = 300 + 3000·(j−14) (j≥15)
+  function wStab(n, base, T, step) {
+    var j = n + 1;
+    return j <= T ? base : base + step * (j - T);
+  }
+  var W4C = function (n) { return wStab(n, 255, 17, 2550); };
+  var W4W = function (n) { return wStab(n, 255, 17, 2550); };
+  var W4WC = function (n) { return wStab(n, 300, 14, 3000); };
+  var W4WW = function (n) { return wStab(n, 300, 14, 3000); };
+
   function simulate(N, A, B, P_, Q, data, pools, cfg, rng, anyUp, init, noRefund) {
     var E = root.GachaEngine;
     init = init || {};
@@ -66,22 +78,23 @@
       if (c === null || c < 0) { chars[name] = 0; g = rule[0]; }
       else if (c >= MAXC) { g = rule[2]; }
       else { chars[name] = c + 1; g = rule[1]; }
-      star += g; book[key] += g; return g;
+      star += g; book[key] += g; cnt[rarity === 5 ? 'c5' : 'c4']++; return g;
     }
     function gainWeapon(name, rarity) {
       var rule = rarity === 5 ? RULE.w5 : RULE.w4;
       var key = rarity === 5 ? 'w5' : 'w4';
       var g = wown[name] ? rule[1] : rule[0];
       wown[name] = true;
-      star += g; book[key] += g; return g;
+      star += g; book[key] += g; cnt[rarity === 5 ? 'w5' : 'w4']++; return g;
     }
     function settle() { if (noRefund) return; while (star >= PER_PULL) { star -= PER_PULL; bought += 1; } }
     function pick(arr) { return arr[(rng() * arr.length) | 0]; }
 
     // 角色侧共享状态
-    var cs = { pity: init.charPity || 0, g: !!init.charGuaranteed, s: init.charStreak || 0, p4: 0 };
-    var ws = { pity: init.weaponPity || 0, f: init.weaponFate || 0, p4: 0 };
+    var cs = { pity: init.charPity || 0, g: !!init.charGuaranteed, s: init.charStreak || 0, p4: 0, c4n: 0, w4n: 0 };
+    var ws = { pity: init.weaponPity || 0, f: init.weaponFate || 0, p4: 0 , c4n: 0, w4n: 0 };
     var gotA = 0, gotB = 0, gotW1 = 0, gotW2 = 0;
+    var cnt = { c4: 0, w4: 0, c5: 0, w5: 0 };   // 仅用于校验四星角色/武器占比
 
     while (gotA < A || gotB < B || gotW1 < P_ || gotW2 < Q) {
       if (pulls >= N + bought) break;
@@ -101,6 +114,7 @@
             if (rng() < pUp) { cs.s = 0; isUp = true; }
             else { cs.g = true; cs.s = Math.min(cs.s + 1, charCfg.radMax); }
           }
+          cs.c4n = 0;   // 五星角色同样算「抽到角色」，重置平稳计数
           if (isUp) {
             gainChar(pool.up5, 5);
             if (onA) gotA++; else gotB++;
@@ -111,12 +125,15 @@
           }
           settle(); continue;
         }
-        cs.p4 += 1;
+        cs.p4 += 1; cs.c4n++; cs.w4n++;
         if (rng() < (cs.p4 >= 10 ? 1 : 0.051)) {
           cs.p4 = 0;
-          if (rng() < 0.5) gainChar(pick(pool.up4), 4);
-          else if (std4weapons.length && rng() >= 0.42) gainWeapon(pick(std4weapons), 4);
-          else gainChar(pick(std4chars), 4);
+          if (rng() < 0.5) { gainChar(pick(pool.up4), 4); }
+          else {
+            var wc = W4C(cs.c4n), ww = W4W(cs.w4n);
+            if (std4weapons.length && rng() < ww / (wc + ww)) { gainWeapon(pick(std4weapons), 4); cs.w4n = 0; }
+            else { gainChar(pick(std4chars), 4); cs.c4n = 0; }
+          }
           settle();
         }
       } else {
@@ -124,6 +141,7 @@
         ws.pity += 1;
         if (rng() < E.p5At(ws.pity - 1, wpCfg)) {
           ws.pity = 0; ws.p4 = 0;
+          ws.w4n = 0;   // 五星武器同样算「抽到武器」
           var guaranteed = wpCfg.fateMax > 0 && ws.f >= wpCfg.fateMax;
           var hitT = 0, hitO = 0;
           if (guaranteed) { if (first) hitT = 1; else hitO = 1; }
@@ -153,11 +171,15 @@
           }
           settle(); continue;
         }
-        ws.p4 += 1;
+        ws.p4 += 1; ws.c4n++; ws.w4n++;
         if (rng() < (ws.p4 >= 10 ? 1 : 0.051)) {
           ws.p4 = 0;
-          if (wup4.length && rng() < 0.75) gainWeapon(pick(wup4), 4);
-          else gainWeapon(std4weapons.length ? pick(std4weapons) : w1, 4);
+          if (wup4.length && rng() < 0.75) { gainWeapon(pick(wup4), 4); ws.w4n = 0; }
+          else {
+            var wcw = W4WC(ws.c4n), www = W4WW(ws.w4n);
+            if (std4weapons.length && rng() < www / (wcw + www)) { gainWeapon(pick(std4weapons), 4); ws.w4n = 0; }
+            else { gainChar(pick(std4chars), 4); ws.c4n = 0; }
+          }
           settle();
         }
       }
@@ -165,7 +187,7 @@
 
     return {
       done: gotA >= A && gotB >= B && gotW1 >= P_ && gotW2 >= Q,
-      pulls: pulls, bought: bought, star: star, book: book,
+      pulls: pulls, bought: bought, star: star, book: book, cnt: cnt,
       got: { a: gotA, b: gotB, w1: gotW1, w2: gotW2 }
     };
   }
