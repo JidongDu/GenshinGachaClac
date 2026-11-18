@@ -475,7 +475,7 @@
       <h4>左侧 ① 输入</h4>
       <ul>
         <li><b>本期卡池</b>：角色池① / 角色池② 各选 1 个 UP 五星 + 3 个 UP 四星；武器池选 2 把 5★ 和 5 把 4★。点开下拉可<b>搜索名字</b>，候选带头像；选「＋ 自定义…」可输入任意新角色 / 新武器。</li>
-        <li><b>目标与预算</b>：总投入抽数（最大 2500）+ 四个目标各要几个。每行会显示对应 UP 的头像和名字，填 0 表示不要。</li>
+        <li><b>目标与预算</b>：总投入抽数（最大 2500）+ 四个目标各要几个（个数不设上限）。每行会显示对应 UP 的头像和名字，填 0 表示不要。</li>
         <li><b>初始状态</b>：角色池已垫抽数 / 首金小保底还是大保底 / 连歪次数；武器池已垫抽数 / 命定值。</li>
         <li><b>个人仓库</b>：角色命座（0–6，-1 = 未拥有）与武器是否拥有。星辉返利完全依赖这份数据，改完可点「导出」保存。</li>
       </ul>
@@ -568,10 +568,10 @@
           <input type="range" id="pulls" min="1" max="2500" step="1" value="360">
         </div>
         <div class="tg-list">
-          <div class="trow"><span class="tlabel">角色①</span><img class="tav" id="tavA" alt=""><span class="tname" id="tnmA">—</span><input type="number" class="tnum" id="tA" value="1" min="0" max="6" step="1"></div>
-          <div class="trow"><span class="tlabel">角色②</span><img class="tav" id="tavB" alt=""><span class="tname" id="tnmB">—</span><input type="number" class="tnum" id="tB" value="1" min="0" max="6" step="1"></div>
-          <div class="trow"><span class="tlabel">武器①</span><img class="tav" id="tavP" alt=""><span class="tname" id="tnmP">—</span><input type="number" class="tnum" id="tP" value="1" min="0" max="5" step="1"></div>
-          <div class="trow"><span class="tlabel">武器②</span><img class="tav" id="tavQ" alt=""><span class="tname" id="tnmQ">—</span><input type="number" class="tnum" id="tQ" value="0" min="0" max="5" step="1"></div>
+          <div class="trow"><span class="tlabel">角色①</span><img class="tav" id="tavA" alt=""><span class="tname" id="tnmA">—</span><input type="number" class="tnum" id="tA" value="1" min="0" step="1"></div>
+          <div class="trow"><span class="tlabel">角色②</span><img class="tav" id="tavB" alt=""><span class="tname" id="tnmB">—</span><input type="number" class="tnum" id="tB" value="1" min="0" step="1"></div>
+          <div class="trow"><span class="tlabel">武器①</span><img class="tav" id="tavP" alt=""><span class="tname" id="tnmP">—</span><input type="number" class="tnum" id="tP" value="1" min="0" step="1"></div>
+          <div class="trow"><span class="tlabel">武器②</span><img class="tav" id="tavQ" alt=""><span class="tname" id="tnmQ">—</span><input type="number" class="tnum" id="tQ" value="0" min="0" step="1"></div>
         </div>
       </section>
 
@@ -1101,10 +1101,10 @@
   function state() {
     return {
       N: clamp(Math.round(val('pullsN', 360)), 1, 2500),
-      A: clamp(Math.round(val('tA', 1)), 0, 6),
-      B: clamp(Math.round(val('tB', 1)), 0, 6),
-      P: clamp(Math.round(val('tP', 1)), 0, 5),
-      Q: clamp(Math.round(val('tQ', 0)), 0, 5),
+      A: clamp(Math.round(val('tA', 1)), 0, 99),
+      B: clamp(Math.round(val('tB', 1)), 0, 99),
+      P: clamp(Math.round(val('tP', 1)), 0, 99),
+      Q: clamp(Math.round(val('tQ', 0)), 0, 99),
       initC: {
         pity: clamp(Math.round(val('charPityN', 0)), 0, 89),
         guaranteed: ($('input[name=firstGold]:checked') || {}).value === 'guaranteed',

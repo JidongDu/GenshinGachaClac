@@ -1,6 +1,3 @@
-# 抓取的图片素材（版权归米哈游，不入库，用 build_assets.py 生成）
-assets/
-
 # 个人抽卡记录 / 导出文件
 HoYo.Gacha_*.json
 *Uigf*.json

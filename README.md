@@ -69,7 +69,7 @@ starlight.js        星辉返利蒙特卡洛（含逐预算 CDF）
 gacha.py            单目标 DP 命令行
 starlight.py        含返利的命令行
 build_data.py       data/*.json → data/roster.js（网页数据包）
-build_assets.py     从 bwiki 抓角色头像 / 武器图标到 assets/
+build_assets.py     从 bwiki 抓角色头像 / 武器图标到 assets/（仓库已含一份）
 build_signature.py  从 bwiki 抓「角色 → 专武」对应
 sync_wiki_data.py   抓取最新角色 / 武器 / 常驻池，刷新数据库
 uigf_to_roster.py  从 UIGF 抽卡记录生成个人仓库
@@ -133,4 +133,6 @@ python starlight.py --pull 360 --targets 1,1,1,1 --mc 20000 --json
 
 ## 素材与版权
 
-`assets/` 下的角色头像和武器图标来自 [原神 bwiki](https://wiki.biligame.com/ys)，版权归米哈游所有，**未包含在本仓库中**，请自行运行 `python3 build_assets.py` 生成，仅作个人使用。代码部分可自由使用。
+`assets/` 下的角色头像和武器图标来自 [原神 bwiki](https://wiki.biligame.com/ys)，版权归米哈游所有，**仅作个人使用，请勿商用或二次分发**。仓库里已包含一份（约 5MB，380 张），也可以随时用 `python3 build_assets.py` 重新抓取或更新。
+
+代码部分可自由使用。
