@@ -185,7 +185,6 @@ def simulate(N, A, B, P, Q, roster, pools, cfg, rng):
             cs["pity"] += 1
             if rng.random() < p5_at(cs["pity"] - 1, char_cfg):
                 cs["pity"] = 0
-                cs["p4"] = 0
                 is_up = False
                 if cs["g"]:
                     cs["g"] = False
@@ -240,7 +239,6 @@ def simulate(N, A, B, P, Q, roster, pools, cfg, rng):
             ws["pity"] += 1
             if rng.random() < p5_at(ws["pity"] - 1, wp_cfg):
                 ws["pity"] = 0
-                ws["p4"] = 0
                 ws["w4n"] = 0
                 guaranteed = wp_cfg["fate_max"] > 0 and ws["f"] >= wp_cfg["fate_max"]
                 hit_t = hit_o = 0.0

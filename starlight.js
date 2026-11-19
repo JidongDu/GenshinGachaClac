@@ -105,7 +105,7 @@
         var pool = onA ? cA : cB;
         cs.pity += 1;
         if (rng() < E.p5At(cs.pity - 1, charCfg)) {
-          cs.pity = 0; cs.p4 = 0;
+          cs.pity = 0;
           var isUp = false;
           if (cs.g) { cs.g = false; isUp = true; }
           else {
@@ -144,7 +144,7 @@
         var first = gotW1 < P_;
         ws.pity += 1;
         if (rng() < E.p5At(ws.pity - 1, wpCfg)) {
-          ws.pity = 0; ws.p4 = 0;
+          ws.pity = 0;
           ws.w4n = 0;   // 五星武器同样算「抽到武器」
           var guaranteed = wpCfg.fateMax > 0 && ws.f >= wpCfg.fateMax;
           var hitT = 0, hitO = 0;
