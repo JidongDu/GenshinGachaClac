@@ -102,7 +102,9 @@ class Sim:
         self.bought = 0
         self.pulls = 0
         self.book = {"char5": 0, "char4": 0, "weap5": 0, "weap4": 0}
-        self.up4 = 0          # 四星 UP 角色个数
+        self.up4 = 0          # 四星 UP 角色总数
+        self.up4n = {}         # 每个 UP 四星角色抽到几次
+        self.wup4n = {}        # 每个 UP 四星武器抽到几次
 
     def c_of(self, name):
         if name in self.overlay:
@@ -220,8 +222,10 @@ def simulate(N, A, B, P, Q, roster, pools, cfg, rng):
             if rng.random() < (1.0 if cs["p4"] >= 10 else 0.051):
                 cs["p4"] = 0
                 if rng.random() < 0.5:
-                    st.gain_char(rng.choice([n for n in pool["up4"] if n] or [pool["up5"]]), 4)
+                    _un = rng.choice([n for n in pool["up4"] if n] or [pool["up5"]])
+                    st.gain_char(_un, 4)
                     st.up4 += 1
+                    st.up4n[_un] = st.up4n.get(_un, 0) + 1
                 else:
                     wc, ww = w_stab(cs["c4n"], 255, 17, 2550), w_stab(cs["w4n"], 255, 17, 2550)
                     if std4weapons and rng.random() < ww / (wc + ww):
@@ -296,8 +300,10 @@ def simulate(N, A, B, P, Q, roster, pools, cfg, rng):
             if rng.random() < (1.0 if ws["p4"] >= 10 else 0.051):
                 ws["p4"] = 0
                 if wup4 and rng.random() < 0.75:
-                    st.gain_weapon(rng.choice(wup4), 4)
+                    _wn = rng.choice(wup4)
+                    st.gain_weapon(_wn, 4)
                     ws["w4n"] = 0
+                    st.wup4n[_wn] = st.wup4n.get(_wn, 0) + 1
                 else:
                     wcw = w_stab(ws["c4n"], 300, 14, 3000)
                     www = w_stab(ws["w4n"], 300, 14, 3000)
@@ -311,7 +317,8 @@ def simulate(N, A, B, P, Q, roster, pools, cfg, rng):
 
     return {"done": gotA >= A and gotB >= B and gotW1 >= P and gotW2 >= Q,
             "pulls": st.pulls, "bought": st.bought,
-            "got": (gotA, gotB, gotW1, gotW2), "book": st.book, "up4": st.up4}
+            "got": (gotA, gotB, gotW1, gotW2), "book": st.book,
+            "up4": st.up4, "up4n": st.up4n, "wup4n": st.wup4n}
 
 
 def monte_carlo(N, A, B, P, Q, roster, pools, runs=100_000, seed=20240828, cfg=None):
@@ -321,6 +328,7 @@ def monte_carlo(N, A, B, P, Q, roster, pools, runs=100_000, seed=20240828, cfg=N
     used = 0.0
     book = {"char5": 0.0, "char4": 0.0, "weap5": 0.0, "weap4": 0.0}
     up4_sum = 0
+    up4n, wup4n = {}, {}
     rng = random.Random(seed)
     for _ in range(runs):
         r = simulate(N, A, B, P, Q, roster, pools, cfg, rng)
@@ -329,11 +337,17 @@ def monte_carlo(N, A, B, P, Q, roster, pools, runs=100_000, seed=20240828, cfg=N
         extra += r["bought"]
         used += r["pulls"]
         up4_sum += r.get("up4", 0)
+        for _k, _v in r.get("up4n", {}).items():
+            up4n[_k] = up4n.get(_k, 0) + _v
+        for _k, _v in r.get("wup4n", {}).items():
+            wup4n[_k] = wup4n.get(_k, 0) + _v
         for k in book:
             book[k] += r["book"][k]
     p = ok / runs
     return {"runs": runs, "p": p, "se": math.sqrt(max(0.0, p * (1 - p) / runs)),
-            "extra": extra / runs, "up4": up4_sum / runs, "book": {k: v / runs for k, v in book.items()},
+            "extra": extra / runs, "up4": up4_sum / runs,
+            "up4n": {k: v / runs for k, v in up4n.items()},
+            "wup4n": {k: v / runs for k, v in wup4n.items()}, "book": {k: v / runs for k, v in book.items()},
             "pulls": used / runs}
 
 
@@ -451,9 +465,17 @@ def main(argv=None):
     print("星辉来源（每局平均换算成抽）")
     print(f"  5★角色 {b['char5'] / 5:6.2f}    4★角色 {b['char4'] / 5:6.2f}")
     print(f"  5★武器 {b['weap5'] / 5:6.2f}    4★武器 {b['weap4'] / 5:6.2f}")
-    print(f"  四星 UP 角色平均 {res.get('up4', 0):.2f} 个")
     tot = sum(b.values()) / 5
     print(f"  合计   {tot:.2f} 抽 ≈ 预算的 {tot / a.pulls * 100:.2f}%")
+    print()
+    print("四星 UP 每局平均个数")
+    for label, key, lst in (("角色池①", "up4n", pools["charA"]["up4"]),
+                            ("角色池②", "up4n", pools["charB"]["up4"]),
+                            ("武器池  ", "wup4n", pools["weapon"].get("up4") or [])):
+        m = res.get(key, {})
+        row = "  ".join(f"{n} {m.get(n, 0):.2f}" for n in lst if n)
+        if row:
+            print(f"  {label}  {row}")
     return 0
 
 

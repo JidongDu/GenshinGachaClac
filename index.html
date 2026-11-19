@@ -378,6 +378,16 @@
     color:var(--muted);cursor:pointer;user-select:none}
   .autosig input{width:15px;height:15px;accent-color:#c99a44;cursor:pointer}
   .autosig:hover{color:#c6cede}
+  .upstats{margin-top:-2px}
+  .upsec{font-size:11px;color:var(--muted2);letter-spacing:.08em;margin:10px 0 6px}
+  .upgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px}
+  .upitem{display:flex;align-items:center;gap:8px;background:rgba(0,0,0,.24);
+    border:1px solid var(--line);border-radius:10px;padding:6px 10px}
+  .upitem img{width:28px;height:28px;border-radius:7px;object-fit:cover;flex:none;
+    background:rgba(255,255,255,.05)}
+  .upitem .n{flex:1;min-width:0;font-size:12px;color:#c9d3e4;overflow:hidden;
+    text-overflow:ellipsis;white-space:nowrap}
+  .upitem b{font-size:14px;color:var(--gold);font-variant-numeric:tabular-nums}
   .picons{display:flex;gap:6px;flex-wrap:wrap;margin-top:9px}
   .pchip{display:flex;flex-direction:column;align-items:center;gap:3px;width:42px}
   .pchip img{width:37px;height:37px;border-radius:11px;object-fit:cover;
@@ -486,6 +496,7 @@
       <ul>
         <li><b>达成概率曲线</b>：金色实线 = 不含返利，蓝色虚线 = 含返利，竖虚线是你的预算</li>
         <li><b>结果分解</b>：全部达成 / 角色齐但武器不足 / 角色未齐</li>
+        <li><b>四星 UP 获取</b>：每个 UP 四星角色 / 武器平均抽到几个</li>
         <li><b>星辉来源</b>：四种稀有度各贡献多少抽</li>
         <li><b>校验</b>：用蒙特卡洛独立复核精确值，两者应在 1σ 内</li>
       </ul>
@@ -673,6 +684,11 @@
           <div><i style="background:linear-gradient(180deg,#5b7fd4,#3f5d9e)"></i>角色齐·武器不足 <b id="lgB">—</b></div>
           <div><i style="background:rgba(255,255,255,.14)"></i>角色未齐 <b id="lgC">—</b></div>
         </div>
+      </section>
+
+      <section class="card">
+        <h2>四星 UP 获取<span class="tag">每局平均个数</span></h2>
+        <div id="upStats" class="upstats"></div>
       </section>
 
       <section class="card">
@@ -1219,10 +1235,34 @@
       $('#slBook').innerHTML = '<span>5★角色 <b>' + (r.book.c5 / 5).toFixed(1) + '</b></span>' +
         '<span>4★角色 <b>' + (r.book.c4 / 5).toFixed(1) + '</b></span>' +
         '<span>5★武器 <b>' + (r.book.w5 / 5).toFixed(1) + '</b></span>' +
-        '<span>4★武器 <b>' + (r.book.w4 / 5).toFixed(1) + '</b></span>' +
-        '<span class="hi">4★UP 角色 <b>' + r.up4.toFixed(1) + '</b> 个</span>';
+        '<span>4★武器 <b>' + (r.book.w4 / 5).toFixed(1) + '</b></span>';
+      renderUpStats(r);
       $('#slTag').textContent = '按个人仓库 · 蒙特卡洛';
     }, 20);
+  }
+
+  /* ---------- 四星 UP 每个的获取数 ---------- */
+  function renderUpStats(r) {
+    var pl = poolsOf();
+    var groups = [
+      ['角色池 ①', 'char', pl.charA.up4, r.up4n],
+      ['角色池 ②', 'char', pl.charB.up4, r.up4n],
+      ['武器池', 'wep', pl.weapon.up4, r.wup4n]
+    ];
+    var html = '';
+    groups.forEach(function (g) {
+      var list = (g[2] || []).filter(Boolean);
+      if (!list.length) return;
+      html += '<div class="upsec">' + g[0] + '</div><div class="upgrid">';
+      list.forEach(function (n) {
+        var v = (g[3] && g[3][n] != null) ? g[3][n] : 0;
+        var src = (g[1] === 'wep' ? 'assets/weapon/' : 'assets/char/') + n + '.webp';
+        html += '<div class="upitem"><img loading="lazy" src="' + src + '" onerror="this.remove()">' +
+          '<span class="n" title="' + n + '">' + n + '</span><b>' + v.toFixed(2) + '</b></div>';
+      });
+      html += '</div>';
+    });
+    $('#upStats').innerHTML = html || '<div class="note">先填卡池</div>';
   }
 
   /* ---------- 图表 ---------- */
