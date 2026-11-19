@@ -94,7 +94,7 @@
     var cs = { pity: init.charPity || 0, g: !!init.charGuaranteed, s: init.charStreak || 0, p4: 0, c4n: 0, w4n: 0 };
     var ws = { pity: init.weaponPity || 0, f: init.weaponFate || 0, p4: 0 , c4n: 0, w4n: 0 };
     var gotA = 0, gotB = 0, gotW1 = 0, gotW2 = 0;
-    var cnt = { c4: 0, w4: 0, c5: 0, w5: 0 };   // 仅用于校验四星角色/武器占比
+    var cnt = { c4: 0, w4: 0, c5: 0, w5: 0, up4: 0 };   // up4 = 四星 UP 角色个数
 
     while (gotA < A || gotB < B || gotW1 < P_ || gotW2 < Q) {
       if (pulls >= N + bought) break;
@@ -128,7 +128,7 @@
         cs.p4 += 1; cs.c4n++; cs.w4n++;
         if (rng() < (cs.p4 >= 10 ? 1 : 0.051)) {
           cs.p4 = 0;
-          if (rng() < 0.5) { gainChar(pick(pool.up4), 4); }
+          if (rng() < 0.5) { gainChar(pick(pool.up4), 4); cnt.up4++; }
           else {
             var wc = W4C(cs.c4n), ww = W4W(cs.w4n);
             if (std4weapons.length && rng() < ww / (wc + ww)) { gainWeapon(pick(std4weapons), 4); cs.w4n = 0; }
@@ -197,12 +197,12 @@
     var runs = opts.runs || 20000;
     var rng = opts.seed != null ? root.GachaEngine.mulberry32(opts.seed) : Math.random;
     var H = Math.max(N, Math.floor(opts.horizon || N));   // 曲线画到 horizon，统计仍按 N
-    var ok = 0, extra = 0, used = 0;
+    var ok = 0, extra = 0, used = 0, up4sum = 0;
     var book = { c5: 0, c4: 0, w5: 0, w4: 0 };
     var hist = new Float64Array(H + 1);
     for (var i = 0; i < runs; i++) {
       var r = simulate(H, A, B, P_, Q, data, pools, opts.cfg, rng, opts.anyUp, opts.init, opts.noRefund);
-      extra += r.bought; used += r.pulls;
+      extra += r.bought; used += r.pulls; up4sum += r.cnt.up4;
       book.c5 += r.book.c5; book.c4 += r.book.c4;
       book.w5 += r.book.w5; book.w4 += r.book.w4;
       if (!r.done) continue;
@@ -216,6 +216,7 @@
     return {
       runs: runs, p: p, se: Math.sqrt(Math.max(0, p * (1 - p) / runs)),
       extra: extra / runs, pulls: used / runs, cdf: cdf,
+      up4: up4sum / runs,
       book: { c5: book.c5 / runs, c4: book.c4 / runs, w5: book.w5 / runs, w4: book.w4 / runs }
     };
   }

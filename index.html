@@ -269,6 +269,8 @@
   .field.col > label{display:block;margin-bottom:5px;flex:none}
   .sl-book{display:flex;gap:14px;flex-wrap:wrap;font-size:11.5px;color:var(--muted2);margin-top:10px}
   .sl-book b{color:#cdd6e6;font-variant-numeric:tabular-nums;font-weight:600}
+  .sl-book .hi{color:#e9c37c}
+  .sl-book .hi b{color:#f3d9a4}
 
   /* ---- 帮助 ---- */
   .top-right{display:flex;align-items:center;gap:16px}
@@ -1217,7 +1219,8 @@
       $('#slBook').innerHTML = '<span>5★角色 <b>' + (r.book.c5 / 5).toFixed(1) + '</b></span>' +
         '<span>4★角色 <b>' + (r.book.c4 / 5).toFixed(1) + '</b></span>' +
         '<span>5★武器 <b>' + (r.book.w5 / 5).toFixed(1) + '</b></span>' +
-        '<span>4★武器 <b>' + (r.book.w4 / 5).toFixed(1) + '</b></span>';
+        '<span>4★武器 <b>' + (r.book.w4 / 5).toFixed(1) + '</b></span>' +
+        '<span class="hi">4★UP 角色 <b>' + r.up4.toFixed(1) + '</b> 个</span>';
       $('#slTag').textContent = '按个人仓库 · 蒙特卡洛';
     }, 20);
   }

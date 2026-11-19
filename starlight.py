@@ -102,6 +102,7 @@ class Sim:
         self.bought = 0
         self.pulls = 0
         self.book = {"char5": 0, "char4": 0, "weap5": 0, "weap4": 0}
+        self.up4 = 0          # 四星 UP 角色个数
 
     def c_of(self, name):
         if name in self.overlay:
@@ -163,8 +164,12 @@ def simulate(N, A, B, P, Q, roster, pools, cfg, rng):
     wup4 = [n for n in (cW.get("up4") or []) if n] or std4weapons
     w1, w2 = cW["up5"][0], (cW["up5"][1] if len(cW["up5"]) > 1 else cW["up5"][0])
 
-    cs = dict(pity=0, g=False, s=0, p4=0)
-    ws = dict(pity=0, f=0, p4=0)
+    def w_stab(n, base, t, step):
+        j = n + 1
+        return base if j <= t else base + step * (j - t)
+
+    cs = dict(pity=0, g=False, s=0, p4=0, c4n=0, w4n=0)
+    ws = dict(pity=0, f=0, p4=0, c4n=0, w4n=0)
     gotA = gotB = gotW1 = gotW2 = 0
 
     while gotA < A or gotB < B or gotW1 < P or gotW2 < Q:
@@ -192,6 +197,7 @@ def simulate(N, A, B, P, Q, roster, pools, cfg, rng):
                     else:
                         cs["g"] = True
                         cs["s"] = min(cs["s"] + 1, char_cfg["rad_max"])
+                cs["c4n"] = 0
                 if is_up:
                     st.gain_char(pool["up5"], 5)
                     if onA:
@@ -209,14 +215,21 @@ def simulate(N, A, B, P, Q, roster, pools, cfg, rng):
                 st.settle()
                 continue
             cs["p4"] += 1
+            cs["c4n"] += 1
+            cs["w4n"] += 1
             if rng.random() < (1.0 if cs["p4"] >= 10 else 0.051):
                 cs["p4"] = 0
                 if rng.random() < 0.5:
                     st.gain_char(rng.choice([n for n in pool["up4"] if n] or [pool["up5"]]), 4)
-                elif std4weapons and rng.random() >= 0.42:
-                    st.gain_weapon(rng.choice(std4weapons), 4)
+                    st.up4 += 1
                 else:
-                    st.gain_char(rng.choice(std4chars), 4)
+                    wc, ww = w_stab(cs["c4n"], 255, 17, 2550), w_stab(cs["w4n"], 255, 17, 2550)
+                    if std4weapons and rng.random() < ww / (wc + ww):
+                        st.gain_weapon(rng.choice(std4weapons), 4)
+                        cs["w4n"] = 0
+                    else:
+                        st.gain_char(rng.choice(std4chars), 4)
+                        cs["c4n"] = 0
                 st.settle()
         else:
             first = gotW1 < P
@@ -224,6 +237,7 @@ def simulate(N, A, B, P, Q, roster, pools, cfg, rng):
             if rng.random() < p5_at(ws["pity"] - 1, wp_cfg):
                 ws["pity"] = 0
                 ws["p4"] = 0
+                ws["w4n"] = 0
                 guaranteed = wp_cfg["fate_max"] > 0 and ws["f"] >= wp_cfg["fate_max"]
                 hit_t = hit_o = 0.0
                 if guaranteed:
@@ -277,17 +291,27 @@ def simulate(N, A, B, P, Q, roster, pools, cfg, rng):
                 st.settle()
                 continue
             ws["p4"] += 1
+            ws["c4n"] += 1
+            ws["w4n"] += 1
             if rng.random() < (1.0 if ws["p4"] >= 10 else 0.051):
                 ws["p4"] = 0
                 if wup4 and rng.random() < 0.75:
                     st.gain_weapon(rng.choice(wup4), 4)
+                    ws["w4n"] = 0
                 else:
-                    st.gain_weapon(rng.choice(std4weapons or [w1]), 4)
+                    wcw = w_stab(ws["c4n"], 300, 14, 3000)
+                    www = w_stab(ws["w4n"], 300, 14, 3000)
+                    if std4weapons and rng.random() < www / (wcw + www):
+                        st.gain_weapon(rng.choice(std4weapons), 4)
+                        ws["w4n"] = 0
+                    else:
+                        st.gain_char(rng.choice(std4chars), 4)
+                        ws["c4n"] = 0
                 st.settle()
 
     return {"done": gotA >= A and gotB >= B and gotW1 >= P and gotW2 >= Q,
             "pulls": st.pulls, "bought": st.bought,
-            "got": (gotA, gotB, gotW1, gotW2), "book": st.book}
+            "got": (gotA, gotB, gotW1, gotW2), "book": st.book, "up4": st.up4}
 
 
 def monte_carlo(N, A, B, P, Q, roster, pools, runs=100_000, seed=20240828, cfg=None):
@@ -296,6 +320,7 @@ def monte_carlo(N, A, B, P, Q, roster, pools, runs=100_000, seed=20240828, cfg=N
     extra = 0.0
     used = 0.0
     book = {"char5": 0.0, "char4": 0.0, "weap5": 0.0, "weap4": 0.0}
+    up4_sum = 0
     rng = random.Random(seed)
     for _ in range(runs):
         r = simulate(N, A, B, P, Q, roster, pools, cfg, rng)
@@ -303,11 +328,12 @@ def monte_carlo(N, A, B, P, Q, roster, pools, runs=100_000, seed=20240828, cfg=N
             ok += 1
         extra += r["bought"]
         used += r["pulls"]
+        up4_sum += r.get("up4", 0)
         for k in book:
             book[k] += r["book"][k]
     p = ok / runs
     return {"runs": runs, "p": p, "se": math.sqrt(max(0.0, p * (1 - p) / runs)),
-            "extra": extra / runs, "book": {k: v / runs for k, v in book.items()},
+            "extra": extra / runs, "up4": up4_sum / runs, "book": {k: v / runs for k, v in book.items()},
             "pulls": used / runs}
 
 
@@ -425,6 +451,7 @@ def main(argv=None):
     print("星辉来源（每局平均换算成抽）")
     print(f"  5★角色 {b['char5'] / 5:6.2f}    4★角色 {b['char4'] / 5:6.2f}")
     print(f"  5★武器 {b['weap5'] / 5:6.2f}    4★武器 {b['weap4'] / 5:6.2f}")
+    print(f"  四星 UP 角色平均 {res.get('up4', 0):.2f} 个")
     tot = sum(b.values()) / 5
     print(f"  合计   {tot:.2f} 抽 ≈ 预算的 {tot / a.pulls * 100:.2f}%")
     return 0
