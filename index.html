@@ -488,7 +488,7 @@
       <ul>
         <li><b>本期卡池</b>：角色池① / 角色池② 各选 1 个 UP 五星 + 3 个 UP 四星；武器池选 2 把 5★ 和 5 把 4★。点开下拉可<b>搜索名字</b>，候选带头像；选「＋ 自定义…」可输入任意新角色 / 新武器。</li>
         <li><b>目标与预算</b>：总投入抽数（最大 2500）+ 四个目标各要几个（个数不设上限）。每行会显示对应 UP 的头像和名字，填 0 表示不要。</li>
-        <li><b>初始状态</b>：角色池已垫抽数 / 首金小保底还是大保底 / 连歪次数；武器池已垫抽数 / 命定值。</li>
+        <li><b>初始状态</b>：角色池已垫抽数 / 首金小保底还是大保底 / 连歪次数；武器池已垫抽数 / 小保底还是大保底（大保底 = 命定值 1，下一把五星必中定轨）。</li>
         <li><b>个人仓库</b>：角色命座（0–6，-1 = 未拥有）与武器是否拥有。星辉返利完全依赖这份数据，改完可点「导出」保存。</li>
       </ul>
 
@@ -622,10 +622,15 @@
           </div>
           <input type="range" id="weaponPity" min="0" max="79" step="1" value="0">
         </div>
-        <div class="field">
-          <label>命定值</label>
-          <select id="weaponFate"><option value="0">0</option><option value="1">1（必中）</option></select>
+        <div class="field" style="border-top:1px dashed rgba(255,255,255,.07);margin-top:10px;padding-top:12px">
+          <label>五星保底<span class="hint">两把 UP 共池</span></label>
         </div>
+        <div class="pills" style="margin-bottom:4px">
+          <label><input type="radio" name="weaponGuar" value="small" checked><span>小保底 75% UP</span></label>
+          <label><input type="radio" name="weaponGuar" value="big"><span>大保底 必中定轨</span></label>
+        </div>
+        <div class="note" style="margin-top:8px">命定值 1 = 下一把五星必定是定轨目标；换定轨目标会清零。</div>
+        <input type="hidden" id="weaponFate" value="0">
       </section>
 
       <section class="card">
@@ -1130,7 +1135,7 @@
       },
       initW: {
         pity: clamp(Math.round(val('weaponPityN', 0)), 0, 79),
-        fate: parseInt(($('#weaponFate') || {}).value, 10) || 0
+        fate: ($('input[name=weaponGuar]:checked') || {}).value === 'big' ? 1 : 0
       }
     };
   }
@@ -1375,12 +1380,14 @@
   var timer = null;
   function schedule() { clearTimeout(timer); timer = setTimeout(compute, 260); }
   Array.prototype.forEach.call(document.querySelectorAll('input, select'), function (el) {
-    el.addEventListener('input', function () {
+    var onEdit = function () {
       if (el.id === 'pulls') $('#pullsN').value = el.value;
       if (el.id === 'charPity') $('#charPityN').value = el.value;
       if (el.id === 'weaponPity') $('#weaponPityN').value = el.value;
       schedule();
-    });
+    };
+    el.addEventListener('input', onEdit);
+    el.addEventListener('change', onEdit);   // 单选按钮只发 change 的情况
   });
   $('#btnReset').addEventListener('click', function () {
     ddSet('up5A', '玛薇卡'); ddSet('up5B', '芙宁娜');
